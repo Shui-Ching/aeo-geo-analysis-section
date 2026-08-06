@@ -1,6 +1,10 @@
 'use strict';
 
-const { assertSafeUrl } = require('./ssrf-guard');
+// 用 undici 套件的 fetch 而不是全域 fetch:全域 fetch 沒有辦法指定 dispatcher 以外的
+// 連線行為,而 dispatcher 必須來自同一份 undici(跨版本的 Agent 不保證能被接受)。
+const { fetch, Agent } = require('undici');
+
+const { assertSafeUrl, safeLookup } = require('./ssrf-guard');
 const { decodeHtmlBuffer } = require('./charset');
 
 const MAX_REDIRECTS = 5;
@@ -10,6 +14,11 @@ const MAX_HTML_BYTES = 5 * 1024 * 1024; // 5MB,避免抓到超大檔案拖垮伺
 const MAX_TEXT_BYTES = 512 * 1024;
 const REDIRECT_STATUSES = [301, 302, 303, 307, 308];
 const USER_AGENT = 'AEOGEO-Checker/1.0 (+local static analysis tool)';
+
+// 全專案唯一對外的 dispatcher。connect.lookup 被換成 safeLookup 之後,
+// 「檢查 IP」與「連到這個 IP」變成同一次 DNS 解析,DNS rebinding 無從下手。
+// 這個模組以外不要再建立其他 Agent,也不要用全域 fetch —— 那等於繞過整層防護。
+const safeAgent = new Agent({ connect: { lookup: safeLookup } });
 
 /**
  * 讀取 response body,超過大小上限就中止連線。
@@ -42,6 +51,9 @@ async function readBodyWithLimit(response, maxBytes) {
  *
  * HTML 主頁與 robots.txt / llms.txt 都必須走這個函式,不可以有任何一條路徑
  * 直接呼叫 fetch 並交給它自己跟隨重導向。
+ *
+ * 兩層防護的分工:assertSafeUrl 是每一跳的預檢(擋協定、localhost,給中文錯誤訊息),
+ * safeAgent 的 lookup 才是實際連線時的把關。少了後者,預檢與連線之間會有 TOCTOU 空窗。
  */
 async function safeFetch(targetUrl, { accept, maxBytes }) {
   let currentUrl = targetUrl;
@@ -59,6 +71,7 @@ async function safeFetch(targetUrl, { accept, maxBytes }) {
       let response;
       try {
         response = await fetch(currentUrl, {
+          dispatcher: safeAgent,
           redirect: 'manual',
           signal: controller.signal,
           headers: { 'User-Agent': USER_AGENT, Accept: accept },

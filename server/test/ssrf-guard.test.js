@@ -2,8 +2,26 @@
 
 const test = require('node:test');
 const assert = require('node:assert/strict');
+const dns = require('node:dns');
 
-const { isBlockedIp } = require('../lib/ssrf-guard');
+const { isBlockedIp, safeLookup } = require('../lib/ssrf-guard');
+
+/** 把 callback 形式的 safeLookup 包成 promise，回傳 callback 收到的全部參數 */
+function callSafeLookup(hostname, options) {
+  return new Promise((resolve, reject) => {
+    safeLookup(hostname, options, (err, address, family) => {
+      if (err) return reject(err);
+      resolve({ address, family });
+    });
+  });
+}
+
+/** 讓 dns.lookup 回傳指定的位址清單（safeLookup 一律以 all:true 呼叫它） */
+function mockResolve(t, addresses) {
+  t.mock.method(dns, 'lookup', (hostname, options, callback) => {
+    callback(null, addresses);
+  });
+}
 
 test('isBlockedIp：loopback 與 0.0.0.0/8', () => {
   assert.equal(isBlockedIp('127.0.0.1'), true);
@@ -102,6 +120,61 @@ test('isBlockedIp：IPv4-mapped IPv6 要套用 IPv4 的規則', () => {
 test('isBlockedIp：一般公開 IPv6 不被擋', () => {
   assert.equal(isBlockedIp('2001:4860:4860::8888'), false);
   assert.equal(isBlockedIp('2606:4700:4700::1111'), false);
+});
+
+test('safeLookup：all 為 false 時回傳單一位址與 family', async (t) => {
+  mockResolve(t, [
+    { address: '93.184.216.34', family: 4 },
+    { address: '2606:2800:220:1:248:1893:25c8:1946', family: 6 },
+  ]);
+
+  const { address, family } = await callSafeLookup('example.com', { family: 0, all: false });
+  assert.equal(address, '93.184.216.34');
+  assert.equal(family, 4, 'family 必須是數字，net.connect 會直接拿去用');
+});
+
+test('safeLookup：all 為 true 時原樣回傳陣列', async (t) => {
+  const addresses = [
+    { address: '93.184.216.34', family: 4 },
+    { address: '2606:2800:220:1:248:1893:25c8:1946', family: 6 },
+  ];
+  mockResolve(t, addresses);
+
+  // Node 22 的 net.connect 預設開啟 autoSelectFamily，會以 all:true 呼叫 lookup，
+  // 這條路徑走錯的話 IPv6 網域一律連不上。
+  const result = await callSafeLookup('example.com', { hints: 1024, all: true });
+  assert.deepEqual(result.address, addresses);
+});
+
+test('safeLookup：解析結果落在私有網段就拒絕', async (t) => {
+  mockResolve(t, [{ address: '169.254.169.254', family: 4 }]);
+
+  await assert.rejects(
+    callSafeLookup('metadata.example.com', { all: false }),
+    /私有或保留網段/,
+  );
+});
+
+test('safeLookup：只要有一個位址不安全就整批拒絕', async (t) => {
+  // 濾掉不安全的那個、留下其餘位址是不夠的——autoSelectFamily 會同時嘗試多個位址，
+  // 而且一個網域同時回公開 IP 與內網 IP 本身就是 DNS rebinding 的攻擊特徵。
+  mockResolve(t, [
+    { address: '93.184.216.34', family: 4 },
+    { address: '127.0.0.1', family: 4 },
+  ]);
+
+  await assert.rejects(callSafeLookup('rebind.example.com', { all: true }), /私有或保留網段/);
+});
+
+test('safeLookup：解析失敗與空結果都往上拋錯', async (t) => {
+  t.mock.method(dns, 'lookup', (hostname, options, callback) => {
+    callback(new Error('getaddrinfo ENOTFOUND'));
+  });
+  await assert.rejects(callSafeLookup('nx.example.com', { all: false }), /ENOTFOUND/);
+
+  t.mock.restoreAll();
+  mockResolve(t, []);
+  await assert.rejects(callSafeLookup('empty.example.com', { all: false }), /沒有可用的 IP/);
 });
 
 test('isBlockedIp：無法辨識的格式一律視為不安全', () => {

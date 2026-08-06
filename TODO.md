@@ -9,18 +9,7 @@ AEO/GEO 檢測工具的待辦清單。建立於 2026-08-06。
 
 ## 待辦（1 = 最重要）
 
-### 1. DNS rebinding（TOCTOU）完整防護
-
-- 檔案：`server/lib/ssrf-guard.js` 的 `assertSafeUrl`（限制已寫在該函式的 JSDoc）
-- 問題：解析出的 IP 無法交給後續的 `fetch` 使用（Node 內建 fetch 沒有指定連線 IP 的選項），
-  實際連線時會再解析一次 DNS。攻擊者若控制 DNS 伺服器，可第一次回公開 IP 通過檢查、
-  第二次回內網 IP 建立連線。
-- 修法：改用 `undici` 自訂 Agent 指定已解析的 IP，同時保留原 hostname 於 Host header 與 TLS SNI。
-- 為什麼不更前面：利用門檻高（需控制 DNS 伺服器並贏得 race），且已在註解明確標記為未實作，
-  不會誤導維護者。**本機使用時風險低，公開部署時大幅上升。**
-- 估時：2-3 小時
-
-### 2. `/api/analyze` 無速率限制、錯誤訊息可用於內網探測
+### 1. `/api/analyze` 無速率限制、錯誤訊息可用於內網探測
 
 - 檔案：`server/routes/analyze.js`（`err.message` 原封不動回給前端）、`server/index.js`（無 rate limit）
 - 問題：錯誤訊息措辭差異（「無法解析網域名稱」vs「連線被拒絕」vs「位於私有網段」）
@@ -28,7 +17,7 @@ AEO/GEO 檢測工具的待辦清單。建立於 2026-08-06。
 - 為什麼不更前面：本機單機使用時無實質意義（你自己打自己）。
 - 估時：1 小時
 
-### 3. `express.static` 開放過多檔案
+### 2. `express.static` 開放過多檔案
 
 - 檔案：`server/index.js:11`
 - 問題：`client/package.json`、`client/package-lock.json`、`client/scss/*.scss` 全部可從瀏覽器下載。
@@ -36,14 +25,14 @@ AEO/GEO 檢測工具的待辦清單。建立於 2026-08-06。
 - 為什麼不更前面：目前這些檔案沒有機密，屬於「不該暴露但沒實害」。
 - 估時：20 分鐘
 
-### 4. 依賴 Google Fonts
+### 3. 依賴 Google Fonts
 
 - 檔案：`client/index.html:8-13`
 - 問題：離線環境下字型掉回系統預設、視覺整個垮掉；同時每次開啟都把使用者資訊送給 Google。
 - 修法：改用本地 woff2 字型檔（專案已有 SCSS build step，成本不高）。
 - 估時：40 分鐘
 
-### 5. 冗餘 selector 與重複的類型陣列
+### 4. 冗餘 selector 與重複的類型陣列
 
 - `server/lib/analyzers/semantic-html.js:23`：`$('script[src], script:not([src])')` 等同 `$('script')`，
   且 filter 內連續呼叫三次 `$(el).attr('type')`。
@@ -54,7 +43,7 @@ AEO/GEO 檢測工具的待辦清單。建立於 2026-08-06。
 - 為什麼排在後面：純可讀性，不影響任何輸出。
 - 估時：20 分鐘
 
-### 6. `build:css` 的輸出格式與版控裡的 `main.css` 不一致
+### 5. `build:css` 的輸出格式與版控裡的 `main.css` 不一致
 
 - 檔案：`client/package.json:6`（`build:css` 帶 `--style=compressed`）／`client/css/main.css`（版控裡是展開格式）
 - 問題：照 README 或 `package.json` 跑 `npm run build:css`，會把整支 CSS 從展開格式改寫成
@@ -68,7 +57,7 @@ AEO/GEO 檢測工具的待辦清單。建立於 2026-08-06。
 - 為什麼排在這裡：不影響工具的任何輸出，但只要有人照 script 跑就一定會踩到，而且修起來只要五分鐘。
 - 估時：5 分鐘（改 script）或 10 分鐘（改格式並重新提交產物）
 
-### 7. HTTP 410 與 404 共用同一段警示文案
+### 6. HTTP 410 與 404 共用同一段警示文案
 
 - 檔案：`client/js/main.js` 的 `statusBannerCopy`
 - 問題：410 Gone 的語意是「站方明確表示此資源已永久移除」，目前與 404 共用
@@ -84,13 +73,62 @@ AEO/GEO 檢測工具的待辦清單。建立於 2026-08-06。
 上述順序假設本機單機使用。若部署到公開網址，此 endpoint 等同「任何人都能免費驅動、
 去抓任意網址」的代理，會被拿來當 SSRF 掃描器與流量放大器。此時順序改為：
 
-1. 第 2 項（速率限制 + 錯誤訊息不外洩）
-2. 第 1 項（DNS rebinding 完整防護）
-3. 第 3 項（`express.static` 目錄收斂）
+1. 第 1 項（速率限制 + 錯誤訊息不外洩）——公開部署時這一項會躍升為最緊急
+2. 第 2 項（`express.static` 目錄收斂）
+
+原本排在這裡的 DNS rebinding 防護已於 2026-08-06 完成，見「已完成」。
 
 ---
 
 ## 已完成
+
+2026-08-06，DNS rebinding（TOCTOU）完整防護（完成時列為待辦第 1 項）已實作並實測驗證：
+
+- **關鍵不是「把預檢解析到的 IP 帶去連線」，而是「讓連線那一次解析就是被檢查的那一次」**
+  （`server/lib/ssrf-guard.js`、`server/lib/fetch-page.js`）
+  原待辦寫的修法是「用 undici 自訂 Agent 指定已解析的 IP，同時保留原 hostname 於 Host header
+  與 TLS SNI」。實際採用的是同一個工具但更直接的做法：`ssrf-guard.js` 新增 `safeLookup`，
+  以 `connect: { lookup }` 掛進 undici 的 `Agent`，成為 `net.connect` / `tls.connect` 實際使用的
+  DNS 解析函式。解析結果就是 socket 連過去的位址，中間沒有第二次解析，所以根本不存在空窗，
+  也不需要手動改寫 URL 再補 Host header 與 servername（那條路要自己維護 SNI，容易出錯）。
+  hostname 仍由 undici 用來組 Host header 與 TLS SNI，只有「連到哪個 IP」被接管。
+- **`fetch` 改為來自 `undici` 套件而不是全域 fetch**（`server/lib/fetch-page.js`）
+  全域 fetch 雖然也接受 `dispatcher`，但那個 Agent 必須與 Node 內建的 undici 同源；
+  直接用 `require('undici')` 的 `fetch` 與 `Agent` 才保證是同一份實作。
+  `safeAgent` 是模組層的單例，`safeFetch` 每一次呼叫都帶 `dispatcher: safeAgent`。
+- **`assertSafeUrl` 保留，但 JSDoc 改寫為「這是預檢，不是最終防線」**
+  它仍然負責擋協定與 `localhost`、並給出中文錯誤訊息（連線層拋的錯會被包成
+  `抓取失敗: fetch failed`，細節在 `err.cause` 裡，對使用者沒有意義）。
+  代價是每個 URL 會解析兩次 DNS，這是刻意換來的錯誤訊息品質。
+- **任一位址不安全就整批拒絕，不是濾掉後留下其餘位址**：Node 22 的 `net.connect` 預設開啟
+  `autoSelectFamily`，會以 `all: true` 呼叫 lookup 並輪流嘗試多個位址；而且一個網域同時
+  回公開 IP 與內網 IP 本身就是攻擊特徵。`safeLookup` 因此一律以 `all: true` 向 `dns.lookup`
+  取得完整清單，全部通過才依呼叫端要的形狀（陣列或單一位址 + family）回傳。
+- **`undici` 從 cheerio 的間接依賴提升為 `server/package.json` 的直接依賴**：
+  版本 `^7.29.0`，與原本就在依賴樹裡的完全相同。已比對 `package-lock.json`，
+  92 個套件數量不變、沒有新增或移除任何套件，唯一的語意變動是根層 `dependencies` 多一行。
+- `test/ssrf-guard.test.js` 新增五個 `safeLookup` 測試（`all` 兩種形狀、私有網段拒絕、
+  混合公開與內網位址整批拒絕、解析失敗與空結果）；新增 `test/dns-rebinding.test.js` 兩個測試。
+- **端對端測試怎麼模擬攻擊**：開一台只聽 `127.0.0.1` 的 HTTP server 當內網服務，
+  把 `dns.promises.lookup`（預檢走的）換成回公開 IP、`dns.lookup`（連線走的）換成回 `127.0.0.1`，
+  等同攻擊者把 TTL 設為 0 後換掉 DNS 答案。**驗收標準是「內網服務收到的請求數為 0」而不是
+  「fetch 拋錯」**——TCP 連線建立之後才失敗一樣算漏。
+  測試檔內另附一個對照組，同一情境改用全域 fetch，斷言它確實連進了內網服務；
+  少了對照組，第一條有可能因為別的原因（例如網域根本解析不到）而假性通過。
+  這是專案裡唯一允許出現全域 fetch 的地方，已寫進該測試的註解。
+- 驗證：`npm test` → `# pass 84 / # fail 0`（測試數從 77 增為 84）。
+  **問題重現**：暫時移除 `dispatcher: safeAgent` 後重跑，`dns-rebinding.test.js`
+  第一條由 pass 轉為 fail（內網服務收到請求），確認這條測試鎖得住的是真的缺口。
+- **已做真實網路端對端確認**（前幾項待辦沒做到的部分，這次補上）：
+  `https://www.wikipedia.org/` 回 200、118282 字元；`http://github.com/` 經一次重導向到 https
+  後回 200；`robots.txt` 抓到 28028 字元——確認 HTTPS 的 SNI、gzip 解壓縮、
+  手動重導向鏈在換掉 dispatcher 之後全部照常。實際啟動 server 打 `/api/analyze`
+  也拿到完整報告（`overallScore = 47`）。
+  同時確認 `http://169.254.169.254/`、`http://127.0.0.1:3000/`、`http://localhost/`
+  三種輸入仍分別被擋在「私有或保留網段」與「不允許存取 localhost」。
+- **仍未涵蓋的情況**：`safeLookup` 只在建立新連線時被呼叫，undici 的連線池若重用既有 socket
+  就不會再解析——但那條 socket 當初已經通過檢查，重用不構成新的風險。
+  另外，本次沒有處理 TODO 第 1 項（速率限制與錯誤訊息外洩），那是獨立的一項。
 
 2026-08-06，追蹤的 AI 爬蟲清單不完整（完成時列為待辦第 1 項）已補齊：
 
