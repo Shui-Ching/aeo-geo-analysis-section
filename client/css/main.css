@@ -540,6 +540,44 @@ h3 {
   word-break: break-all;
 }
 
+.status-banner:not([hidden]) {
+  display: flex;
+  gap: 16px;
+  padding: 24px;
+  margin-bottom: 24px;
+  background: #fbe7ea;
+  border: 1px solid rgba(217, 48, 74, 0.4);
+  border-left: 4px solid #d9304a;
+  border-radius: 14px;
+}
+
+.status-banner-icon {
+  flex-shrink: 0;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #d9304a;
+  color: #ffffff;
+  font-family: "JetBrains Mono", "Noto Sans TC", monospace;
+  font-weight: 700;
+}
+
+.status-banner-title {
+  font-size: 1rem;
+  font-weight: 700;
+  color: #d9304a;
+  margin-bottom: 8px;
+}
+
+.status-banner-desc {
+  font-size: 0.875rem;
+  color: #565f74;
+  line-height: 1.6;
+}
+
 .gate-banner:not([hidden]) {
   display: flex;
   gap: 16px;

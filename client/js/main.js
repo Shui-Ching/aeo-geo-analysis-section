@@ -64,6 +64,7 @@ function hideError() {
 
 function renderReport(data) {
     renderMeta(data);
+    renderStatusBanner(data);
     renderGateBanner(data.crawlerAccess);
     renderScoreGauge(data.overallScore);
     renderScoreBreakdown(data.categories);
@@ -96,6 +97,51 @@ function renderMeta(data) {
     if (data.redirectChain.length > 0) {
         container.append(metaItem('重導向次數', String(data.redirectChain.length)));
     }
+}
+
+// HTTP 錯誤狀態的說法。分開寫是因為使用者要採取的行動完全不同:
+// 403 要調整站方的 bot 防護規則,404 要檢查網址有沒有打錯。
+function statusBannerCopy(status) {
+    if (status === 401 || status === 403) {
+        return {
+            title: `伺服器以 HTTP ${status} 拒絕了這次請求`,
+            desc: '通常是 Cloudflare 之類的 bot 防護把本工具的 User-Agent 擋下來了。抓到的是那張拒絕頁面，不是你要檢測的內容。',
+        };
+    }
+    if (status === 404 || status === 410) {
+        return {
+            title: `這個網址回傳 HTTP ${status}，頁面不存在`,
+            desc: '請先確認網址有沒有打錯、或該頁面是不是已經下架。抓到的是站方的錯誤頁面，不是你要檢測的內容。',
+        };
+    }
+    if (status >= 500) {
+        return {
+            title: `伺服器回傳 HTTP ${status} 錯誤`,
+            desc: '對方伺服器目前有問題，過一段時間再掃一次。抓到的是錯誤頁面，不是你要檢測的內容。',
+        };
+    }
+    return {
+        title: `這個網址回傳 HTTP ${status}`,
+        desc: '這不是正常的成功狀態碼，抓到的內容很可能不是你要檢測的頁面。',
+    };
+}
+
+// 錯誤頁照樣分析、照樣給分,但必須在最上方講清楚分數的對象是誰。
+// 不直接擋下不分析的理由:robots.txt 與 llms.txt 抓的是 origin 層級的檔案,
+// 就算這個路徑 404,「AI 爬蟲存取權限明細」那一段的結論仍然完全成立。
+function renderStatusBanner(data) {
+    const banner = document.getElementById('status-banner');
+    const status = data.httpStatus;
+    if (!Number.isInteger(status) || status < 400) {
+        banner.hidden = true;
+        return;
+    }
+
+    const { title, desc } = statusBannerCopy(status);
+    document.getElementById('status-banner-title').textContent = title;
+    document.getElementById('status-banner-desc').textContent =
+        `${desc}下方三大分類分數描述的是這張錯誤頁面本身的內容品質，不代表你原本想檢測的頁面。`;
+    banner.hidden = false;
 }
 
 function renderGateBanner(crawlerAccess) {

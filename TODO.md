@@ -9,15 +9,7 @@ AEO/GEO 檢測工具的待辦清單。建立於 2026-08-06。
 
 ## 待辦（1 = 最重要）
 
-### 1. HTTP 4xx/5xx 錯誤頁照樣被評分
-
-- 檔案：`server/routes/analyze.js`（取得 `page` 之後未檢查 `page.status`）
-- 問題：掃到 404 頁面會產出一份看起來正常的報告，只有 meta 區塊角落的「HTTP 狀態」透露真相。
-- 修法：`status >= 400` 時比照 gate banner 在報告最上方給明確警示，或直接擋下不分析。
-- 為什麼最優先：輸出錯誤結論，而且觸發機率高——網址打錯一個字就會發生。成本低。
-- 估時：30 分鐘
-
-### 2. robots.txt 規則與頁面路徑的百分比編碼不一致
+### 1. robots.txt 規則與頁面路徑的百分比編碼不一致
 
 - 檔案：`server/lib/analyzers/crawler-access.js` 的 `findLongestMatch`／`server/routes/analyze.js`
 - 問題：傳進去比對的 `finalUrl.pathname` 一定是百分比編碼過的（`/%E9%97%9C%E6%96%BC`），
@@ -25,11 +17,10 @@ AEO/GEO 檢測工具的待辦清單。建立於 2026-08-06。
   規則會被當成沒命中。
 - 修法：依 RFC 9309，比對前把規則與路徑都正規化成百分比編碼（規則用 `encodeURI` 處理，
   已編碼的部分要避免二次編碼）。
-- 為什麼排第二：與已修好的路徑比對是同一類「假的綠燈」，而且中文網站正是這個工具的主要對象。
-  排在第一項之後是因為觸發條件較窄（要站方真的用中文路徑寫 Disallow 才會踩到）。
+- 為什麼最優先：與已修好的路徑比對是同一類「假的綠燈」，而且中文網站正是這個工具的主要對象。
 - 估時：40 分鐘
 
-### 3. 零單元測試
+### 2. 零單元測試
 
 - 對象：`server/lib/scoring.js`、`crawler-access.js` 的 `parseRobotsTxt` 與 `isPathBlocked`
   （兩者目前皆未 export，寫測試時要一併加上）、`server/lib/charset.js` 的 `decodeHtmlBuffer`、
@@ -37,10 +28,10 @@ AEO/GEO 檢測工具的待辦清單。建立於 2026-08-06。
   —— 全是無副作用的純函式。
 - 工具：Node 18+ 內建 `node:test`，不需新增依賴。
 - 為什麼排在其他所有事情之前：它是防止已修好的東西又壞掉的機制。robots.txt 比對邏輯
-  （已完成的第一項）若有測試，「`Allow` 沒被使用」第一天就會被抓到。
+  （已完成的項目）若有測試，「`Allow` 沒被使用」第一天就會被抓到。
 - 估時：2-3 小時
 
-### 4. 追蹤的 AI 爬蟲清單不完整
+### 3. 追蹤的 AI 爬蟲清單不完整
 
 - 檔案：`server/lib/analyzers/crawler-access.js` 的 `TRACKED_BOTS`
 - 缺少：`Applebot-Extended`、`meta-externalagent`（Meta AI）、`Amazonbot`、
@@ -48,7 +39,7 @@ AEO/GEO 檢測工具的待辦清單。建立於 2026-08-06。
 - 為什麼：站方封鎖了 Meta AI，報告完全不會提，也是假陰性。屬於資料補齊而非邏輯錯誤，投報率高。
 - 估時：20 分鐘
 
-### 5. DNS rebinding（TOCTOU）完整防護
+### 4. DNS rebinding（TOCTOU）完整防護
 
 - 檔案：`server/lib/ssrf-guard.js` 的 `assertSafeUrl`（限制已寫在該函式的 JSDoc）
 - 問題：解析出的 IP 無法交給後續的 `fetch` 使用（Node 內建 fetch 沒有指定連線 IP 的選項），
@@ -59,7 +50,7 @@ AEO/GEO 檢測工具的待辦清單。建立於 2026-08-06。
   不會誤導維護者。**本機使用時風險低，公開部署時大幅上升。**
 - 估時：2-3 小時
 
-### 6. `/api/analyze` 無速率限制、錯誤訊息可用於內網探測
+### 5. `/api/analyze` 無速率限制、錯誤訊息可用於內網探測
 
 - 檔案：`server/routes/analyze.js`（`err.message` 原封不動回給前端）、`server/index.js`（無 rate limit）
 - 問題：錯誤訊息措辭差異（「無法解析網域名稱」vs「連線被拒絕」vs「位於私有網段」）
@@ -67,7 +58,7 @@ AEO/GEO 檢測工具的待辦清單。建立於 2026-08-06。
 - 為什麼不更前面：本機單機使用時無實質意義（你自己打自己）。
 - 估時：1 小時
 
-### 7. `express.static` 開放過多檔案
+### 6. `express.static` 開放過多檔案
 
 - 檔案：`server/index.js:11`
 - 問題：`client/package.json`、`client/package-lock.json`、`client/scss/*.scss` 全部可從瀏覽器下載。
@@ -75,14 +66,14 @@ AEO/GEO 檢測工具的待辦清單。建立於 2026-08-06。
 - 為什麼不更前面：目前這些檔案沒有機密，屬於「不該暴露但沒實害」。
 - 估時：20 分鐘
 
-### 8. 依賴 Google Fonts
+### 7. 依賴 Google Fonts
 
 - 檔案：`client/index.html:8-13`
 - 問題：離線環境下字型掉回系統預設、視覺整個垮掉；同時每次開啟都把使用者資訊送給 Google。
 - 修法：改用本地 woff2 字型檔（專案已有 SCSS build step，成本不高）。
 - 估時：40 分鐘
 
-### 9. 冗餘 selector 與重複的類型陣列
+### 8. 冗餘 selector 與重複的類型陣列
 
 - `server/lib/analyzers/semantic-html.js:23`：`$('script[src], script:not([src])')` 等同 `$('script')`，
   且 filter 內連續呼叫三次 `$(el).attr('type')`。
@@ -100,16 +91,39 @@ AEO/GEO 檢測工具的待辦清單。建立於 2026-08-06。
 上述順序假設本機單機使用。若部署到公開網址，此 endpoint 等同「任何人都能免費驅動、
 去抓任意網址」的代理，會被拿來當 SSRF 掃描器與流量放大器。此時順序改為：
 
-1. 第 6 項（速率限制 + 錯誤訊息不外洩）
-2. 第 5 項（DNS rebinding 完整防護）
-3. 第 7 項（`express.static` 目錄收斂）
-4. 之後才是第 1、2、3、4 項（評分正確性與測試）
+1. 第 5 項（速率限制 + 錯誤訊息不外洩）
+2. 第 4 項（DNS rebinding 完整防護）
+3. 第 6 項（`express.static` 目錄收斂）
+4. 之後才是第 1、2、3 項（評分正確性與測試）
 
 ---
 
 ## 已完成
 
-2026-08-06，robots.txt 路徑比對（原待辦第 1 項）已修復並實測驗證：
+2026-08-06，HTTP 4xx/5xx 錯誤頁警示（完成時列為待辦第 1 項）已完成並實測驗證：
+
+- **錯誤頁照樣被評分卻沒有任何警示**（`client/index.html`、`client/js/main.js`、
+  `client/scss/components/_report.scss`）
+  報告最上方新增 `status-banner`，`httpStatus >= 400` 時顯示，位置在 `gate-banner` 之前
+  （HTTP 錯誤比 robots.txt 封鎖更根本，且兩者可能同時發生）。
+  文案依狀態碼分三類，因為使用者要採取的行動不同：401／403 說明是站方的 bot 防護擋下本工具、
+  404／410 提示網址可能打錯或頁面已下架、5xx 建議稍後再掃；三類都明講「下方分數描述的是
+  這張錯誤頁面本身的內容品質」。
+  **選擇警示而非直接擋下不分析的理由**：robots.txt 與 llms.txt 抓的是 origin 層級的檔案，
+  就算這個路徑 404，「AI 爬蟲存取權限明細」那一段的結論仍然完全成立，擋下等於丟掉正確資料。
+  這也與既有 `gate-banner`「照樣給分但講清楚分數的對象」的處理方式一致。
+  **實作位置與原待辦記載不同**：原本寫在 `server/routes/analyze.js`，實際改在前端——
+  `httpStatus` 早就在 API 回應裡（`analyze.js:63`），後端再包一層警示物件只是多一層封裝，
+  該檔案至今仍未檢查 `page.status`，這是刻意的。
+  驗證：實際掃描 `https://www.google.com/aeogeo-does-not-exist-xyz`，確認 API 回
+  `httpStatus=404` 且照樣給出 33 分（重現問題）；再用 Node `vm` 沙箱載入真實的 `main.js`
+  搭配最小 DOM stub，確認 200／204／304 不顯示、401／403／404／410／418／500／503
+  顯示且文案分類正確。CSS 已重新編譯，確認 `.status-banner:not([hidden])` 進了 `main.css`。
+  **未經瀏覽器目視確認**：DOM stub 的 `getElementById` 會偽造任何 id，所以上述測試證明的是
+  文案分支與 `hidden` 開關，不是 id 有沒有接對（id 與 class 是逐一比對三支檔案確認的）；
+  視覺結果由編譯後的 CSS 推得，沒有實際開瀏覽器看過。
+
+2026-08-06，robots.txt 路徑比對（完成時列為待辦第 1 項）已修復並實測驗證：
 
 - **`isPathBlocked` 不比對路徑、`Allow` 規則解析了卻沒用**（`server/lib/analyzers/crawler-access.js`）
   `analyzeCrawlerAccess` 新增 `path` 參數（由 `analyze.js` 以 `finalUrl.pathname + finalUrl.search` 傳入），
@@ -129,7 +143,7 @@ AEO/GEO 檢測工具的待辦清單。建立於 2026-08-06。
   `User-agent: CCBot / Disallow: /` 會被併進同一群組，導致 GPTBot 被誤判為全站封鎖。
   驗證：新增兩個案例，確認空值群組不合併、連續 `User-agent` 仍共用同一群組。
 
-已知未處理的限制（已列入待辦）：規則與路徑的百分比編碼不一致（待辦第 2 項）；
+已知未處理的限制（已列入待辦）：規則與路徑的百分比編碼不一致（待辦第 1 項）；
 同一個 user-agent 出現兩組不連續規則群組時只有第一組生效（已寫進 JSDoc，暫不處理）。
 `note` 欄位目前只存在於 API 回應，前端 `renderCrawlerTable` 只讀 `blocked`，未改動 UI。
 
@@ -144,7 +158,7 @@ AEO/GEO 檢測工具的待辦清單。建立於 2026-08-06。
   驗證：本機測試 server 回 302，確認兩跳都進入 SSRF 檢查。
 - **`resolvedIp` 宣稱有 DNS rebinding 防護但無任何呼叫端使用**（`server/lib/ssrf-guard.js`）
   移除該回傳值，並把 TOCTOU 限制誠實寫進 JSDoc。**這是移除誤導、不是修好漏洞**，
-  實際防護見上方待辦第 5 項。
+  實際防護見上方待辦第 4 項。
 - **輔助檔案的 body 無大小上限**（`server/lib/fetch-page.js`）
   `readBodyWithLimit` 改為接受 `maxBytes`：HTML 5MB、robots.txt / llms.txt 512KB。
   驗證：4MB 回應被中止，heapUsed 停在 8MB。

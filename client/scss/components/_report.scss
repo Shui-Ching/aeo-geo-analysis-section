@@ -33,6 +33,47 @@
     word-break: break-all;
 }
 
+// HTTP 4xx/5xx 警示旗:抓到的根本不是目標頁面,比 robots.txt 封鎖更根本,
+// 所以排在 gate-banner 之前。左側實心色條讓兩張紅旗同時出現時不會糊成一塊。
+// display 的 :not([hidden]) 寫法理由同下方 gate-banner。
+.status-banner:not([hidden]) {
+    display: flex;
+    gap: $spacing-4;
+    padding: $spacing-6;
+    margin-bottom: $spacing-6;
+    background: $color-fail-bg;
+    border: 1px solid rgba($color-fail, 0.4);
+    border-left: 4px solid $color-fail;
+    border-radius: $radius-card;
+}
+
+.status-banner-icon {
+    flex-shrink: 0;
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: $color-fail;
+    color: $color-white;
+    font-family: $font-mono;
+    font-weight: 700;
+}
+
+.status-banner-title {
+    font-size: $font-size-sm;
+    font-weight: 700;
+    color: $color-fail;
+    margin-bottom: $spacing-2;
+}
+
+.status-banner-desc {
+    font-size: $font-size-xs;
+    color: $color-text-secondary;
+    line-height: 1.6;
+}
+
 // AI 爬蟲封鎖警示旗:獨立於三大分類分數之外,因為性質不同(致命 vs 程度)
 // display 只在「未被 hidden 屬性隱藏」時套用,避免跟原生 [hidden] { display: none }
 // 特異度打平、被本規則蓋掉,造成 JS 設定 hidden 也擋不住它顯示
