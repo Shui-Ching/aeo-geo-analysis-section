@@ -6,6 +6,7 @@ const { fetch, Agent } = require('undici');
 
 const { assertSafeUrl, safeLookup } = require('./ssrf-guard');
 const { decodeHtmlBuffer } = require('./charset');
+const { publicError } = require('./public-error');
 
 const MAX_REDIRECTS = 5;
 const FETCH_TIMEOUT_MS = 10_000;
@@ -36,7 +37,8 @@ async function readBodyWithLimit(response, maxBytes) {
     received += value.length;
     if (received > maxBytes) {
       reader.cancel();
-      throw new Error(`回應內容超過 ${Math.round(maxBytes / 1024)}KB 上限`);
+      // 可公開:能讀到 body 代表對方是公開主機,講出大小上限不洩漏內網資訊
+      throw publicError(`回應內容超過 ${Math.round(maxBytes / 1024)}KB 上限`);
     }
     chunks.push(value);
   }
@@ -54,6 +56,10 @@ async function readBodyWithLimit(response, maxBytes) {
  *
  * 兩層防護的分工:assertSafeUrl 是每一跳的預檢(擋協定、localhost,給中文錯誤訊息),
  * safeAgent 的 lookup 才是實際連線時的把關。少了後者,預檢與連線之間會有 TOCTOU 空窗。
+ *
+ * 連線本身失敗時拋一般 Error(訊息不對外顯示):連線被拒、逾時、TLS 失敗這幾種
+ * 措辭的差異可以被用來探測內網有哪些主機在。走到重導向與 body 讀取這一步的
+ * 錯誤才用 publicError,因為那時對方已經確定是公開主機。理由見 public-error.js。
  */
 async function safeFetch(targetUrl, { accept, maxBytes }) {
   let currentUrl = targetUrl;
@@ -82,7 +88,7 @@ async function safeFetch(targetUrl, { accept, maxBytes }) {
 
       if (REDIRECT_STATUSES.includes(response.status)) {
         const location = response.headers.get('location');
-        if (!location) throw new Error('伺服器回傳重導向狀態碼但未提供 Location');
+        if (!location) throw publicError('伺服器回傳重導向狀態碼但未提供 Location');
         const nextUrl = new URL(location, currentUrl).toString();
         redirectChain.push({ from: currentUrl, to: nextUrl, status: response.status });
         currentUrl = nextUrl;
@@ -96,7 +102,7 @@ async function safeFetch(targetUrl, { accept, maxBytes }) {
     }
   }
 
-  throw new Error(`重導向超過 ${MAX_REDIRECTS} 次上限`);
+  throw publicError(`重導向超過 ${MAX_REDIRECTS} 次上限`);
 }
 
 async function fetchHtml(targetUrl) {

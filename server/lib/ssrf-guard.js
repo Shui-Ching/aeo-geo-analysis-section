@@ -5,6 +5,8 @@
 const dns = require('node:dns');
 const net = require('node:net');
 
+const { publicError } = require('./public-error');
+
 // 私有／保留位址範圍:任何解析結果落在這些範圍內一律拒絕抓取,防止 SSRF
 // (打內網服務、雲端 metadata endpoint 等)
 const BLOCKED_IPV4_RANGES = [
@@ -62,22 +64,27 @@ function isBlockedIp(ip) {
  * 預檢的價值只有兩個:在還沒開連線前就擋掉明顯不合法的輸入,以及給出中文錯誤訊息
  * (連線層拋出的錯誤會被包成「抓取失敗: ...」)。
  * 不要把 assertSafeUrl 單獨用在任何會發出連線的路徑上。
+ *
+ * 錯誤分兩種:只描述輸入字串的用 publicError(可原封不動顯示給使用者),
+ * 描述 DNS 或網段判定結果的用一般 Error(措辭差異會洩漏內網資訊,呼叫端會收斂掉)。
+ * 詳細的分界理由見 public-error.js。
  */
 async function assertSafeUrl(rawUrl) {
   let url;
   try {
     url = new URL(rawUrl);
   } catch {
-    throw new Error('URL 格式無效');
+    throw publicError('URL 格式無效');
   }
 
   if (url.protocol !== 'http:' && url.protocol !== 'https:') {
-    throw new Error('僅支援 http 或 https 協定');
+    throw publicError('僅支援 http 或 https 協定');
   }
 
   const hostname = url.hostname;
   if (hostname === 'localhost') {
-    throw new Error('不允許存取 localhost');
+    // localhost 是每一台機器都成立的常數,講出來不會透露這台伺服器的網路環境
+    throw publicError('不允許存取 localhost');
   }
 
   let addresses;
