@@ -1,0 +1,122 @@
+@use '../variables' as *;
+
+.score-overview {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: $spacing-12;
+    align-items: center;
+    padding: $spacing-8;
+    background: $color-surface;
+    border: 1px solid $color-border;
+    border-radius: $radius-card;
+    margin-bottom: $spacing-8;
+
+    @media (max-width: $bp-sm-down) {
+        grid-template-columns: 1fr;
+        justify-items: center;
+        text-align: center;
+        gap: $spacing-6;
+    }
+}
+
+.score-gauge {
+    position: relative;
+    width: 176px;
+    height: 176px;
+    flex-shrink: 0;
+}
+
+.score-gauge svg {
+    width: 100%;
+    height: 100%;
+    transform: rotate(-90deg);
+}
+
+.score-gauge-track {
+    fill: none;
+    stroke: $color-border;
+    stroke-width: 10;
+}
+
+.score-gauge-fill {
+    fill: none;
+    stroke-width: 10;
+    stroke-linecap: round;
+    stroke-dasharray: 502;
+    stroke-dashoffset: 502;
+    transition: stroke-dashoffset 1.1s cubic-bezier(0.22, 1, 0.36, 1) 0.2s, stroke 0.3s ease;
+
+    &.is-pass {
+        stroke: $color-pass;
+    }
+    &.is-warn {
+        stroke: $color-warn;
+    }
+    &.is-fail {
+        stroke: $color-fail;
+    }
+}
+
+.score-gauge-readout {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+}
+
+.score-gauge-value {
+    font-family: $font-mono;
+    font-size: $font-size-xxl;
+    font-weight: 700;
+    line-height: 1;
+}
+
+.score-gauge-max {
+    font-family: $font-mono;
+    font-size: $font-size-xs;
+    color: $color-text-tertiary;
+    margin-top: $spacing-1;
+}
+
+.score-breakdown {
+    display: flex;
+    flex-direction: column;
+    gap: $spacing-3;
+}
+
+.score-breakdown-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: $spacing-4;
+    font-size: $font-size-sm;
+}
+
+.score-breakdown-label {
+    color: $color-text-secondary;
+}
+
+.score-breakdown-bar-track {
+    flex: 1;
+    height: 6px;
+    border-radius: 3px;
+    background: $color-border;
+    overflow: hidden;
+    margin-inline: $spacing-4;
+}
+
+.score-breakdown-bar-fill {
+    height: 100%;
+    border-radius: 3px;
+    background: $color-signal;
+    transition: width 0.8s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.score-breakdown-value {
+    font-family: $font-mono;
+    font-weight: 600;
+    width: 3ch;
+    text-align: right;
+}

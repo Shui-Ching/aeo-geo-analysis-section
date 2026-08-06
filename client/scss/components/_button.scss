@@ -1,0 +1,37 @@
+@use 'sass:color';
+@use '../variables' as *;
+
+.btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: $spacing-2;
+    height: 52px;
+    padding-inline: $spacing-6;
+    border-radius: $radius-button;
+    font-family: $font-mono;
+    font-size: $font-size-sm;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    white-space: nowrap;
+    transition: transform 0.15s ease, box-shadow 0.15s ease, opacity 0.15s ease;
+}
+
+.btn-primary {
+    background: linear-gradient(135deg, $color-signal, color.adjust($color-signal, $lightness: -8%));
+    color: $color-white;
+
+    &:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 8px 24px -8px rgba($color-signal, 0.55);
+    }
+
+    &:active {
+        transform: translateY(0);
+    }
+
+    &:disabled {
+        opacity: 0.5;
+        pointer-events: none;
+    }
+}

@@ -1,0 +1,78 @@
+@use '../variables' as *;
+
+html {
+    background: $color-bg;
+}
+
+body {
+    background:
+        radial-gradient(ellipse 900px 600px at 15% -10%, rgba($color-signal, 0.12), transparent 60%),
+        radial-gradient(ellipse 700px 500px at 100% 10%, rgba($color-flare, 0.1), transparent 55%),
+        $color-bg;
+    color: $color-text-primary;
+    font-family: $font-body;
+    font-size: $font-size-base;
+    position: relative;
+    overflow-x: hidden;
+}
+
+// 極細訊號網格,製造「掃描儀器」的空間深度感,不干擾閱讀
+body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    z-index: 0;
+    pointer-events: none;
+    background-image:
+        linear-gradient(rgba($color-text-primary, 0.025) 1px, transparent 1px),
+        linear-gradient(90deg, rgba($color-text-primary, 0.025) 1px, transparent 1px);
+    background-size: 48px 48px;
+    animation: grid-drift 12s linear infinite;
+}
+
+.page-shell {
+    position: relative;
+    z-index: 1;
+}
+
+.container {
+    width: 100%;
+    max-width: 960px;
+    margin-inline: auto;
+    padding-inline: $spacing-6;
+
+    @media (max-width: $bp-sm-down) {
+        padding-inline: $spacing-4;
+    }
+}
+
+h1,
+h2,
+h3 {
+    font-family: $font-display;
+    font-weight: 600;
+    line-height: 1.15;
+    letter-spacing: -0.01em;
+}
+
+.mono {
+    font-family: $font-mono;
+}
+
+.text-secondary {
+    color: $color-text-secondary;
+}
+
+.visually-hidden {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+}
+
+::selection {
+    background: rgba($color-signal, 0.3);
+    color: $color-text-primary;
+}

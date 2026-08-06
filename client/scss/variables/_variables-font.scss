@@ -1,0 +1,20 @@
+// 字體 Token
+$font-display: 'Fraunces', 'Noto Serif TC', serif; // 標題:編輯感襯線字,帶性格
+$font-mono: 'JetBrains Mono', 'Noto Sans TC', monospace; // 數據/分數:機器判讀感
+$font-body: 'IBM Plex Sans', 'Noto Sans TC', sans-serif; // 內文
+
+// 字級 scale(最小 0.875rem,低於此值須回報使用者裁決)
+$font-size-xs: 0.875rem; // 14px
+$font-size-sm: 1rem; // 16px
+$font-size-base: 1.0625rem; // 17px
+$font-size-md: 1.25rem; // 20px
+$font-size-lg: 1.75rem; // 28px
+$font-size-xl: 2.5rem; // 40px
+$font-size-xxl: 3.5rem; // 56px
+
+// 響應式斷點(跨專案固定值,對齊 Bootstrap 5 grid)
+$bp-sm-down: 575.98px; // 手機
+$bp-md-down: 767.98px; // 平板直立
+$bp-lg-down: 991.98px; // 平板橫向 / 小筆電
+$bp-xl-down: 1199.98px; // 桌機
+$bp-xxl-down: 1399.98px; // 大桌機

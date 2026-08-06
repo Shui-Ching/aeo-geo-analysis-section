@@ -1,0 +1,35 @@
+// 色彩 Token
+// 主題:訊號掃描站‧日間模式。背景改為冷白基調的儀器面板,
+// 訊號青與珊瑚橙皆加深飽和度以維持在淺色底上的可讀對比,
+// 語意狀態色(綠/黃/紅)同步加深、搭配淺色底色,延續原深色版的訊號燈語彙。
+
+// 背景階層
+$color-bg: #f4f6fa;
+$color-surface: #ffffff;
+$color-surface-raised: #eef1f6;
+$color-border: #dde3ec;
+$color-border-strong: #c3cbdb;
+
+// 文字
+$color-text-primary: #10141c;
+$color-text-secondary: #565f74;
+$color-text-tertiary: #868fa3;
+
+// 品牌 / 互動色
+$color-signal: #0a7d8c; // 訊號青:連結、互動元件、掃描動效(加深以符合淺底可讀對比)
+$color-signal-dim: #e1f4f3; // 訊號青的淺色背景版本,用於淺色底色區塊
+$color-flare: #d8481f; // 珊瑚橙:CTA、強調重點(加深以符合淺底可讀對比)
+
+// 語意狀態色(對應 pass / warn / fail / na)
+$color-pass: #0f7a46;
+$color-pass-bg: #e3f6ea;
+$color-warn: #a15c00;
+$color-warn-bg: #fbf0da;
+$color-fail: #d9304a;
+$color-fail-bg: #fbe7ea;
+$color-na: #6b7280;
+$color-na-bg: #eef0f3;
+
+// 灰階(用於漸層、陰影疊加)
+$color-black: #000000;
+$color-white: #ffffff;

@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>AEO/GEO 訊號掃描器</title>
+    <meta name="description" content="貼上網址，掃描頁面對 AI 答案引擎(ChatGPT、Claude、Perplexity)的可讀性、結構化資料與內容可信度訊號。" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+        href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=IBM+Plex+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600;700&display=swap"
+        rel="stylesheet"
+    />
+    <link rel="stylesheet" href="css/main.css" />
+</head>
+<body>
+    <div class="page-shell">
+        <div class="container">
+            <header class="site-header">
+                <p class="site-header-eyebrow mono">AEO / GEO SIGNAL SCANNER</p>
+                <h1 class="site-header-title">AI 讀得到你的網站嗎？</h1>
+                <p class="site-header-desc">
+                    貼上網址，掃描頁面對 AI 答案引擎(ChatGPT、Claude、Perplexity)是否可讀、可信、可被引用。這是啟發式評分工具，不是官方標準——每一項檢查都附上判定依據，而不是只給一個數字。
+                </p>
+            </header>
+
+            <section class="scan-form-section">
+                <form class="scan-form" id="scan-form" novalidate>
+                    <label for="url-input" class="visually-hidden">要檢測的網址</label>
+                    <div class="scan-form-field">
+                        <span class="scan-form-prompt mono">&gt;</span>
+                        <input
+                            type="text"
+                            id="url-input"
+                            class="scan-form-input"
+                            placeholder="example.com 或 https://example.com"
+                            autocomplete="off"
+                            spellcheck="false"
+                        />
+                    </div>
+                    <button type="submit" class="btn btn-primary" id="scan-button">
+                        <span class="btn-label">開始掃描</span>
+                    </button>
+                </form>
+                <p class="scan-form-error mono" id="scan-error" hidden></p>
+            </section>
+
+            <section class="scan-status" id="scan-status" hidden>
+                <p class="scan-status-text" id="scan-status-text">正在抓取頁面</p>
+            </section>
+
+            <section class="report" id="report" hidden>
+                <div class="report-meta" id="report-meta"></div>
+
+                <div class="gate-banner" id="gate-banner" hidden>
+                    <div class="gate-banner-icon">!</div>
+                    <div>
+                        <p class="gate-banner-title">主要 AI 爬蟲被 robots.txt 封鎖</p>
+                        <p class="gate-banner-desc" id="gate-banner-desc"></p>
+                        <div class="gate-banner-list" id="gate-banner-list"></div>
+                    </div>
+                </div>
+
+                <div class="score-overview">
+                    <div class="score-gauge" id="score-gauge">
+                        <svg viewBox="0 0 176 176">
+                            <circle class="score-gauge-track" cx="88" cy="88" r="80" />
+                            <circle class="score-gauge-fill" id="score-gauge-fill" cx="88" cy="88" r="80" />
+                        </svg>
+                        <div class="score-gauge-readout">
+                            <span class="score-gauge-value mono" id="score-value">--</span>
+                            <span class="score-gauge-max">/ 100</span>
+                        </div>
+                    </div>
+                    <div class="score-breakdown" id="score-breakdown"></div>
+                </div>
+
+                <div class="category-list" id="category-list"></div>
+
+                <div class="crawler-section">
+                    <h2 class="crawler-section-title">AI 爬蟲存取權限明細</h2>
+                    <p class="crawler-section-desc">依 robots.txt 規則逐一比對各家 AI 答案引擎的爬蟲/取用 User-Agent。</p>
+                    <table class="crawler-table">
+                        <thead>
+                            <tr>
+                                <th>爬蟲</th>
+                                <th>廠商</th>
+                                <th>用途</th>
+                                <th>狀態</th>
+                            </tr>
+                        </thead>
+                        <tbody id="crawler-table-body"></tbody>
+                    </table>
+                    <p class="llms-note" id="llms-note"></p>
+                </div>
+            </section>
+        </div>
+    </div>
+
+    <script src="js/main.js"></script>
+</body>
+</html>

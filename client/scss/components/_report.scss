@@ -1,0 +1,286 @@
+@use '../variables' as *;
+
+.report {
+    padding-bottom: $spacing-24;
+    animation: fade-up 0.5s ease both;
+}
+
+// 技術讀出條:網址、HTTP 狀態、編碼、重導向鏈
+.report-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: $spacing-2 $spacing-8;
+    padding: $spacing-4 $spacing-6;
+    margin-bottom: $spacing-6;
+    background: $color-surface;
+    border: 1px solid $color-border;
+    border-radius: $radius-card;
+    font-family: $font-mono;
+    font-size: $font-size-xs;
+}
+
+.report-meta-item {
+    display: flex;
+    gap: $spacing-2;
+}
+
+.report-meta-label {
+    color: $color-text-tertiary;
+}
+
+.report-meta-value {
+    color: $color-text-primary;
+    word-break: break-all;
+}
+
+// AI 爬蟲封鎖警示旗:獨立於三大分類分數之外,因為性質不同(致命 vs 程度)
+// display 只在「未被 hidden 屬性隱藏」時套用,避免跟原生 [hidden] { display: none }
+// 特異度打平、被本規則蓋掉,造成 JS 設定 hidden 也擋不住它顯示
+.gate-banner:not([hidden]) {
+    display: flex;
+    gap: $spacing-4;
+    padding: $spacing-6;
+    margin-bottom: $spacing-6;
+    background: $color-fail-bg;
+    border: 1px solid rgba($color-fail, 0.4);
+    border-radius: $radius-card;
+}
+
+.gate-banner-icon {
+    flex-shrink: 0;
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba($color-fail, 0.15);
+    color: $color-fail;
+    font-family: $font-mono;
+    font-weight: 700;
+}
+
+.gate-banner-title {
+    font-size: $font-size-sm;
+    font-weight: 700;
+    color: $color-fail;
+    margin-bottom: $spacing-2;
+}
+
+.gate-banner-desc {
+    font-size: $font-size-xs;
+    color: $color-text-secondary;
+    line-height: 1.6;
+    margin-bottom: $spacing-3;
+}
+
+.gate-banner-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: $spacing-2;
+}
+
+.gate-banner-tag {
+    display: inline-flex;
+    align-items: center;
+    height: 26px;
+    padding-inline: $spacing-3;
+    border-radius: $radius-badge;
+    background: rgba($color-fail, 0.12);
+    border: 1px solid rgba($color-fail, 0.35);
+    color: $color-fail;
+    font-family: $font-mono;
+    font-size: $font-size-xs;
+}
+
+// 三大分類卡片
+.category-list {
+    display: flex;
+    flex-direction: column;
+    gap: $spacing-4;
+    margin-bottom: $spacing-8;
+}
+
+.category-card {
+    background: $color-surface;
+    border: 1px solid $color-border;
+    border-radius: $radius-card;
+    overflow: hidden;
+}
+
+.category-card-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: $spacing-4;
+    padding: $spacing-6;
+    cursor: pointer;
+    user-select: none;
+
+    &:hover {
+        background: $color-surface-raised;
+    }
+}
+
+.category-card-heading {
+    display: flex;
+    align-items: baseline;
+    gap: $spacing-3;
+}
+
+.category-card-title {
+    font-size: $font-size-md;
+}
+
+.category-card-count {
+    font-family: $font-mono;
+    font-size: $font-size-xs;
+    color: $color-text-tertiary;
+}
+
+.category-card-score {
+    display: flex;
+    align-items: center;
+    gap: $spacing-3;
+}
+
+.category-card-score-value {
+    font-family: $font-mono;
+    font-size: $font-size-lg;
+    font-weight: 700;
+    min-width: 3ch;
+    text-align: right;
+
+    &.is-pass {
+        color: $color-pass;
+    }
+    &.is-warn {
+        color: $color-warn;
+    }
+    &.is-fail {
+        color: $color-fail;
+    }
+    &.is-na {
+        color: $color-text-tertiary;
+    }
+}
+
+.category-card-chevron {
+    width: 20px;
+    height: 20px;
+    color: $color-text-tertiary;
+    transition: transform 0.25s ease;
+    flex-shrink: 0;
+
+    .category-card.is-open & {
+        transform: rotate(180deg);
+    }
+}
+
+.category-card-body {
+    display: grid;
+    grid-template-rows: 0fr;
+    transition: grid-template-rows 0.3s ease;
+
+    .category-card.is-open & {
+        grid-template-rows: 1fr;
+    }
+}
+
+.category-card-body-inner {
+    overflow: hidden;
+}
+
+.check-row {
+    padding: $spacing-4 $spacing-6;
+    border-top: 1px solid $color-border;
+}
+
+.check-row-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: $spacing-4;
+    margin-bottom: $spacing-2;
+}
+
+.check-row-label {
+    font-size: $font-size-sm;
+    font-weight: 500;
+}
+
+.check-row-evidence {
+    font-family: $font-mono;
+    font-size: $font-size-xs;
+    color: $color-text-secondary;
+    margin-bottom: $spacing-1;
+    line-height: 1.6;
+}
+
+.check-row-why {
+    font-size: $font-size-xs;
+    color: $color-text-tertiary;
+    line-height: 1.6;
+}
+
+// AI 爬蟲存取權限明細表
+.crawler-section {
+    background: $color-surface;
+    border: 1px solid $color-border;
+    border-radius: $radius-card;
+    padding: $spacing-6;
+}
+
+.crawler-section-title {
+    font-size: $font-size-md;
+    margin-bottom: $spacing-1;
+}
+
+.crawler-section-desc {
+    font-size: $font-size-xs;
+    color: $color-text-tertiary;
+    margin-bottom: $spacing-4;
+}
+
+.crawler-table {
+    width: 100%;
+    font-size: $font-size-xs;
+}
+
+.crawler-table th {
+    text-align: left;
+    padding: $spacing-2 $spacing-3;
+    color: $color-text-tertiary;
+    font-weight: 500;
+    font-family: $font-mono;
+    border-bottom: 1px solid $color-border;
+}
+
+.crawler-table td {
+    padding: $spacing-3;
+    border-bottom: 1px solid $color-border;
+    vertical-align: top;
+}
+
+.crawler-table tr:last-child td {
+    border-bottom: none;
+}
+
+.crawler-table-bot {
+    font-family: $font-mono;
+    font-weight: 600;
+}
+
+.crawler-table-vendor,
+.crawler-table-purpose {
+    color: $color-text-secondary;
+}
+
+.llms-note {
+    margin-top: $spacing-4;
+    padding-top: $spacing-4;
+    border-top: 1px solid $color-border;
+    font-size: $font-size-xs;
+    color: $color-text-tertiary;
+    line-height: 1.6;
+}
