@@ -9,37 +9,7 @@ AEO/GEO 檢測工具的待辦清單。建立於 2026-08-06。
 
 ## 待辦（1 = 最重要）
 
-### 1. robots.txt 規則與頁面路徑的百分比編碼不一致
-
-- 檔案：`server/lib/analyzers/crawler-access.js` 的 `findLongestMatch`／`server/routes/analyze.js`
-- 問題：傳進去比對的 `finalUrl.pathname` 一定是百分比編碼過的（`/%E9%97%9C%E6%96%BC`），
-  但 robots.txt 裡的規則多半直接寫中文（`Disallow: /關於`）。兩邊字串對不起來，
-  規則會被當成沒命中。
-- 修法：依 RFC 9309，比對前把規則與路徑都正規化成百分比編碼（規則用 `encodeURI` 處理，
-  已編碼的部分要避免二次編碼）。
-- 為什麼最優先：與已修好的路徑比對是同一類「假的綠燈」，而且中文網站正是這個工具的主要對象。
-- 估時：40 分鐘
-
-### 2. 零單元測試
-
-- 對象：`server/lib/scoring.js`、`crawler-access.js` 的 `parseRobotsTxt` 與 `isPathBlocked`
-  （兩者目前皆未 export，寫測試時要一併加上）、`server/lib/charset.js` 的 `decodeHtmlBuffer`、
-  `server/lib/ssrf-guard.js` 的 `isBlockedIp`、`structured-data.js` 的 `flattenJsonLd`
-  —— 全是無副作用的純函式。
-- 工具：Node 18+ 內建 `node:test`，不需新增依賴。
-- 為什麼排在其他所有事情之前：它是防止已修好的東西又壞掉的機制。robots.txt 比對邏輯
-  （已完成的項目）若有測試，「`Allow` 沒被使用」第一天就會被抓到。
-- 估時：2-3 小時
-
-### 3. 追蹤的 AI 爬蟲清單不完整
-
-- 檔案：`server/lib/analyzers/crawler-access.js` 的 `TRACKED_BOTS`
-- 缺少：`Applebot-Extended`、`meta-externalagent`（Meta AI）、`Amazonbot`、
-  `Bytespider`（豆包／TikTok）、`cohere-ai`、`Diffbot`
-- 為什麼：站方封鎖了 Meta AI，報告完全不會提，也是假陰性。屬於資料補齊而非邏輯錯誤，投報率高。
-- 估時：20 分鐘
-
-### 4. DNS rebinding（TOCTOU）完整防護
+### 1. DNS rebinding（TOCTOU）完整防護
 
 - 檔案：`server/lib/ssrf-guard.js` 的 `assertSafeUrl`（限制已寫在該函式的 JSDoc）
 - 問題：解析出的 IP 無法交給後續的 `fetch` 使用（Node 內建 fetch 沒有指定連線 IP 的選項），
@@ -50,7 +20,7 @@ AEO/GEO 檢測工具的待辦清單。建立於 2026-08-06。
   不會誤導維護者。**本機使用時風險低，公開部署時大幅上升。**
 - 估時：2-3 小時
 
-### 5. `/api/analyze` 無速率限制、錯誤訊息可用於內網探測
+### 2. `/api/analyze` 無速率限制、錯誤訊息可用於內網探測
 
 - 檔案：`server/routes/analyze.js`（`err.message` 原封不動回給前端）、`server/index.js`（無 rate limit）
 - 問題：錯誤訊息措辭差異（「無法解析網域名稱」vs「連線被拒絕」vs「位於私有網段」）
@@ -58,7 +28,7 @@ AEO/GEO 檢測工具的待辦清單。建立於 2026-08-06。
 - 為什麼不更前面：本機單機使用時無實質意義（你自己打自己）。
 - 估時：1 小時
 
-### 6. `express.static` 開放過多檔案
+### 3. `express.static` 開放過多檔案
 
 - 檔案：`server/index.js:11`
 - 問題：`client/package.json`、`client/package-lock.json`、`client/scss/*.scss` 全部可從瀏覽器下載。
@@ -66,14 +36,14 @@ AEO/GEO 檢測工具的待辦清單。建立於 2026-08-06。
 - 為什麼不更前面：目前這些檔案沒有機密，屬於「不該暴露但沒實害」。
 - 估時：20 分鐘
 
-### 7. 依賴 Google Fonts
+### 4. 依賴 Google Fonts
 
 - 檔案：`client/index.html:8-13`
 - 問題：離線環境下字型掉回系統預設、視覺整個垮掉；同時每次開啟都把使用者資訊送給 Google。
 - 修法：改用本地 woff2 字型檔（專案已有 SCSS build step，成本不高）。
 - 估時：40 分鐘
 
-### 8. 冗餘 selector 與重複的類型陣列
+### 5. 冗餘 selector 與重複的類型陣列
 
 - `server/lib/analyzers/semantic-html.js:23`：`$('script[src], script:not([src])')` 等同 `$('script')`，
   且 filter 內連續呼叫三次 `$(el).attr('type')`。
@@ -84,7 +54,7 @@ AEO/GEO 檢測工具的待辦清單。建立於 2026-08-06。
 - 為什麼排在後面：純可讀性，不影響任何輸出。
 - 估時：20 分鐘
 
-### 9. `build:css` 的輸出格式與版控裡的 `main.css` 不一致
+### 6. `build:css` 的輸出格式與版控裡的 `main.css` 不一致
 
 - 檔案：`client/package.json:6`（`build:css` 帶 `--style=compressed`）／`client/css/main.css`（版控裡是展開格式）
 - 問題：照 README 或 `package.json` 跑 `npm run build:css`，會把整支 CSS 從展開格式改寫成
@@ -98,7 +68,7 @@ AEO/GEO 檢測工具的待辦清單。建立於 2026-08-06。
 - 為什麼排在這裡：不影響工具的任何輸出，但只要有人照 script 跑就一定會踩到，而且修起來只要五分鐘。
 - 估時：5 分鐘（改 script）或 10 分鐘（改格式並重新提交產物）
 
-### 10. HTTP 410 與 404 共用同一段警示文案
+### 7. HTTP 410 與 404 共用同一段警示文案
 
 - 檔案：`client/js/main.js` 的 `statusBannerCopy`
 - 問題：410 Gone 的語意是「站方明確表示此資源已永久移除」，目前與 404 共用
@@ -114,14 +84,115 @@ AEO/GEO 檢測工具的待辦清單。建立於 2026-08-06。
 上述順序假設本機單機使用。若部署到公開網址，此 endpoint 等同「任何人都能免費驅動、
 去抓任意網址」的代理，會被拿來當 SSRF 掃描器與流量放大器。此時順序改為：
 
-1. 第 5 項（速率限制 + 錯誤訊息不外洩）
-2. 第 4 項（DNS rebinding 完整防護）
-3. 第 6 項（`express.static` 目錄收斂）
-4. 之後才是第 1、2、3 項（評分正確性與測試）
+1. 第 2 項（速率限制 + 錯誤訊息不外洩）
+2. 第 1 項（DNS rebinding 完整防護）
+3. 第 3 項（`express.static` 目錄收斂）
 
 ---
 
 ## 已完成
+
+2026-08-06，追蹤的 AI 爬蟲清單不完整（完成時列為待辦第 1 項）已補齊：
+
+- **`TRACKED_BOTS` 從 10 支增為 18 支**（`server/lib/analyzers/crawler-access.js`）
+  新增 `Applebot-Extended`（Apple）、Meta 三支（`meta-externalagent` 訓練/索引、
+  `meta-webindexer` 搜尋引用、`meta-externalfetcher` 使用者即時瀏覽）、`Amazonbot`（Amazon）、
+  `Bytespider`（ByteDance）、`cohere-ai`（Cohere）、`Diffbot`。
+  Meta 補到三支是為了與 OpenAI／Anthropic 的粒度一致——那兩家都是「訓練／搜尋引用／
+  使用者即時瀏覽」三支齊全，Meta 官方文件也剛好對得上這三種。
+  排序改為「第一方廠商爬蟲在前，把資料供應給多家模型的第三方（CCBot、Diffbot）在後」，
+  所以 CCBot 從最後一列往上移了一格。比對邏輯完全沒動——`isPathBlocked` 兩邊都轉小寫，
+  帶連字號的 `meta-externalagent`、`cohere-ai` 走的是同一條路徑。
+- **名單裡有兩種性質不同的東西，已寫進檔頭註解**：`Google-Extended` 與 `Applebot-Extended`
+  不是真的會來抓網頁的爬蟲，而是 robots.txt 專用的控制標記，擋掉只影響「抓回去的資料
+  能不能拿去訓練」，不影響一般搜尋索引（Apple 官方文件明講 Applebot-Extended does not
+  crawl webpages itself）。`Bytespider` 則是常被回報無視 robots.txt，`meta-externalfetcher`
+  更是 Meta 官方文件自己載明「依使用者要求取用時可能不套用 robots.txt」；報告照樣呈現
+  規則的判定結果，因為工具的職責是檢查站方有沒有表態。
+- **`cohere-ai` 的用途標為「使用者即時瀏覽」而非訓練**：Cohere 另有
+  `cohere-training-data-crawler` 負責訓練資料，`cohere-ai` 目前沒有官方文件說明，
+  第三方觀測認為是聊天產品依使用者提問即時取用。這一欄的措辭有不確定性。
+- **前端未改動**：`renderCrawlerTable` 是直接跑 `crawlerAccess.bots` 的迴圈，新增的六列
+  自動出現，不需要動 `client/js/main.js` 或 HTML。
+- `test/crawler-access.test.js` 新增三個測試：ua 不重複且欄位齊全、八支新爬蟲都在名單裡、
+  robots.txt 寫成 `Meta-ExternalAgent`／`Cohere-AI`／`BYTESPIDER` 這種實務大小寫仍能命中。
+  最後那條的 `deepEqual` 順帶鎖住「agent 是完整比對而非前綴比對」——Meta 三支共用
+  `meta-external` 前綴，只指名 `meta-externalagent` 時不該連 `meta-externalfetcher` 一起判封鎖。
+- 驗證：`npm test` → `# pass 77 / # fail 0`（測試數從 74 增為 77）。
+  **未經真實網站端對端確認**：測試走 `analyzeCrawlerAccess` 的公開介面，沒有實際掃描
+  一個 robots.txt 有封鎖 Meta 或 ByteDance 的線上網站。
+- 未收錄 `meta-externalads`（廣告與商業產品用途，不屬於 AI 答案引擎）與
+  `cohere-training-data-crawler`（原待辦指定的是 `cohere-ai`，兩支性質不同，
+  要不要一併追蹤是後續可再決定的事）。
+
+2026-08-06，`isBlockedIp` 未涵蓋 multicast 與保留網段（完成時列為待辦第 3 項）已修補：
+
+- **`BLOCKED_IPV4_RANGES` 補上三個網段**（`server/lib/ssrf-guard.js`）
+  `192.88.99.0/24`（已淘汰的 6to4 relay anycast）、`224.0.0.0/4`（multicast）、
+  `240.0.0.0/4`（保留段，涵蓋受限廣播位址 `255.255.255.255`）。
+  遮罩比對邏輯完全沒動——`bits: 4` 在既有的 `(~0 << (32 - bits)) >>> 0` 下算出 `0xF0000000`，
+  與 `/8`、`/24` 走同一條路徑。
+  **這是補防禦深度，不是修可利用的漏洞**：HTTP 走 multicast 或廣播位址幾乎建立不了 TCP 連線，
+  真正有意義的是 `240.0.0.0/4` 在某些內部網路確實有路由。
+- `test/ssrf-guard.test.js` 新增三個測試（各網段的上下界），並把原本刻意迴避 224 以上的
+  「位元運算不溢位」測試改回用 `255.255.255.255` 斷言——那條位址現在有明確的預期行為了。
+- 驗證：`npm test` → `# pass 74 / # fail 0`（測試數從 71 增為 74）。
+
+2026-08-06，零單元測試（完成時列為待辦第 1 項）已建立並全數通過：
+
+- **`server/test/` 五支測試檔，共 71 個測試案例，`npm test` 全綠。**
+  工具是 Node 內建的 `node:test` 與 `node:assert/strict`，沒有新增任何依賴。
+  `server/package.json` 新增 `test`（`node --test`）與 `test:watch` 兩支 script。
+  **`node --test test/` 這種寫法會失敗**——Node 會把 `test/` 當成單一檔案去 require，
+  要嘛不帶參數讓它自己遞迴搜尋，要嘛給明確的 glob。
+- 覆蓋範圍：`scoring.js`（10 個，重點是 `na` 從分母移除而不是算 0 分）、
+  `crawler-access.js`（29 個，涵蓋 `normalizeForMatch`／`parseRobotsTxt`／`isPathBlocked`
+  三層與對外的 `analyzeCrawlerAccess`）、`charset.js`（10 個，Big5 解碼與 header/meta 優先序）、
+  `ssrf-guard.js`（12 個，各網段的 CIDR 邊界）、`structured-data.js`（8 個，`@graph` 攤平）。
+- **為了測試而新增的 export**：`crawler-access.js` 的 `normalizeForMatch`、`parseRobotsTxt`、
+  `isPathBlocked`，以及 `structured-data.js` 的 `flattenJsonLd`。這四支沒有其他模組使用，
+  export 的唯一理由寫在各自的 `module.exports` 上方註解裡。
+- **這批測試當場抓到一個真 bug**（已修，`crawler-access.js` 的 `encodeUnescapedChunk`）：
+  `encodeURI` 自己就會把 `%` 編成 `%25`，原本卻在丟進去之前又手動替換一次，
+  結果 `/100%off` 被正規化成 `/100%2525off`。
+  **當天稍早那 28 個案例的整合測試看不到這個錯誤**——規則與路徑套用同一個函式，
+  兩邊一起錯、一起對得上，最終 `blocked` 仍然正確。只有直接斷言 `normalizeForMatch`
+  的輸出字串才看得出來。實際傷害是規則若寫成正確編碼的 `/100%25off`，
+  會對不上路徑 `/100%off` 而整條漏判。修好後補了一個
+  「`normalizeForMatch('/100%off') === normalizeForMatch('/100%25off')`」的斷言鎖住行為。
+  這正是這個待辦項存在的理由，也說明整合測試不能取代單元測試。
+- **順帶發現的資安問題**：`isBlockedIp` 沒有涵蓋 multicast 與保留網段。當下未修（超出「寫測試」
+  的範圍），測試刻意停在 `223.255.255.255` 不對 224 以上做斷言，避免把缺口固化成規格；
+  **同日經確認後已補上，見上一則紀錄**。
+- **`server/node_modules` 原本不存在**（專案從未安裝過依賴），本次以 `npm ci` 依 lockfile 安裝，
+  `package-lock.json` 未被修改，`node_modules` 已被 `.gitignore` 涵蓋。
+- 驗證：`npm test` → `# pass 71 / # fail 0`。當天稍早的 28 案例臨時腳本重跑仍全數通過。
+
+2026-08-06，robots.txt 規則與頁面路徑的百分比編碼不一致（完成時列為待辦第 1 項）已修復並實測驗證：
+
+- **中文（及任何非 ASCII）的 robots.txt 規則永遠比對不到路徑**
+  （`server/lib/analyzers/crawler-access.js`）
+  新增 `normalizeForMatch`，依 RFC 9309 把規則與路徑都正規化成百分比編碼再比對。
+  `compileRule` 在 escape 之前先正規化，`analyzeCrawlerAccess` 對傳入的 path 套用同一個函式。
+  **兩邊都要正規化、不能只處理規則那一側**：`URL` 物件不編碼 `[`、`]`、`|`、`^`，
+  而 `encodeURI` 會編碼它們，只做單邊會把原本對得上的 ASCII 規則弄成對不上。
+  已編碼的片段原樣保留、只把十六進位統一成大寫，避免 `%E9` 被二次編碼成 `%25E9`；
+  不做反向解碼，所以 `%2F` 不會被還原成路徑分隔的 `/`。落單的 `%`（例如 `/100%off`）
+  交給 `encodeURI` 自己編成 `%25`（**這裡當初寫錯過一次，見上一則紀錄**）。
+  **最長比對改用編碼後長度**（`findLongestMatch` 與 Allow/Disallow 的勝負判定），
+  因為 RFC 9309 比的是編碼後的 octet 長度，`/關於` 要算 9 個字元而不是 3 個；
+  `note` 欄位仍顯示規則原文，不讓使用者讀到 `Disallow: /%E9%97%9C%E6%96%BC`。
+  ReDoS 的長度與萬用字元上限**刻意留在原始規則上檢查**，否則中文規則會因編碼後膨脹九倍
+  而被 `MAX_RULE_LENGTH` 誤丟（60 個中文字就會超過 500）。
+  驗證：28 個案例的臨時腳本全數通過，涵蓋中文／日文／emoji 規則、規則已編碼（大小寫 hex）、
+  中文搭配 `*` 與 `$`、空白、`[]`／`|`／`^`、落單的 `%`、`%2F` 不還原、
+  以編碼後長度決定的最長比對、以及六項既有行為的回歸。
+  同一份腳本對 `git show HEAD` 的修改前版本執行，28 個案例中有 11 個失敗（問題重現）。
+  `server/routes/analyze.js` 未改動——正規化放在 analyzer 內部，呼叫端照舊傳
+  `finalUrl.pathname + finalUrl.search` 即可。
+  **未經真實網站端對端確認**：測試走 `analyzeCrawlerAccess` 的公開介面，
+  路徑由真的 `new URL()` 產生（與 `analyze.js:49` 同一種串接方式），
+  但沒有實際掃描一個 robots.txt 寫中文規則的線上網站。
 
 2026-08-06，HTTP 4xx/5xx 錯誤頁警示（完成時列為待辦第 1 項）已完成並實測驗證：
 
@@ -166,7 +237,7 @@ AEO/GEO 檢測工具的待辦清單。建立於 2026-08-06。
   `User-agent: CCBot / Disallow: /` 會被併進同一群組，導致 GPTBot 被誤判為全站封鎖。
   驗證：新增兩個案例，確認空值群組不合併、連續 `User-agent` 仍共用同一群組。
 
-已知未處理的限制（已列入待辦）：規則與路徑的百分比編碼不一致（待辦第 1 項）；
+已知未處理的限制：規則與路徑的百分比編碼不一致（已於同日修復，見上方）；
 同一個 user-agent 出現兩組不連續規則群組時只有第一組生效（已寫進 JSDoc，暫不處理）。
 `note` 欄位目前只存在於 API 回應，前端 `renderCrawlerTable` 只讀 `blocked`，未改動 UI。
 
@@ -181,7 +252,7 @@ AEO/GEO 檢測工具的待辦清單。建立於 2026-08-06。
   驗證：本機測試 server 回 302，確認兩跳都進入 SSRF 檢查。
 - **`resolvedIp` 宣稱有 DNS rebinding 防護但無任何呼叫端使用**（`server/lib/ssrf-guard.js`）
   移除該回傳值，並把 TOCTOU 限制誠實寫進 JSDoc。**這是移除誤導、不是修好漏洞**，
-  實際防護見上方待辦第 4 項。
+  實際防護見上方待辦第 2 項。
 - **輔助檔案的 body 無大小上限**（`server/lib/fetch-page.js`）
   `readBodyWithLimit` 改為接受 `maxBytes`：HTML 5MB、robots.txt / llms.txt 512KB。
   驗證：4MB 回應被中止，heapUsed 停在 8MB。

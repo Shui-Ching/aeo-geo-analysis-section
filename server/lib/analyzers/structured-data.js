@@ -92,4 +92,6 @@ function analyzeStructuredData($) {
   return { ...findings, nodes: parsedNodes, types: [...new Set(allTypes)] };
 }
 
-module.exports = { analyzeStructuredData };
+// flattenJsonLd 僅供本模組使用,export 是為了讓 test/structured-data.test.js 直接測
+// 巢狀 @graph 與陣列的攤平行為。
+module.exports = { analyzeStructuredData, flattenJsonLd };

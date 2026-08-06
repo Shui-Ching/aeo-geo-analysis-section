@@ -13,8 +13,11 @@ const BLOCKED_IPV4_RANGES = [
   { base: '169.254.0.0', bits: 16 },
   { base: '172.16.0.0', bits: 12 },
   { base: '192.0.0.0', bits: 24 },
+  { base: '192.88.99.0', bits: 24 }, // 已淘汰的 6to4 relay anycast
   { base: '192.168.0.0', bits: 16 },
   { base: '198.18.0.0', bits: 15 },
+  { base: '224.0.0.0', bits: 4 }, // multicast
+  { base: '240.0.0.0', bits: 4 }, // 保留段,涵蓋廣播位址 255.255.255.255
 ];
 
 function ipv4ToInt(ip) {
