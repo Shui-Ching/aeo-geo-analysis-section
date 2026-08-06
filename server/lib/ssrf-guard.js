@@ -49,7 +49,13 @@ function isBlockedIp(ip) {
 
 /**
  * 驗證 URL 是否可安全抓取:限定 http/https、解析主機名並拒絕私有/保留 IP。
- * 回傳解析後的 IP,呼叫端應使用該 IP 建立連線(避免 DNS rebinding)。
+ * 通過檢查不回傳值,只在不安全時拋錯。
+ *
+ * 已知限制(DNS rebinding / TOCTOU):這裡解析出來的 IP 無法交給後續的 fetch 使用,
+ * Node 內建的 fetch 沒有提供指定連線 IP 的選項,實際連線時會再解析一次 DNS。
+ * 攻擊者若控制 DNS 伺服器,可以第一次回公開 IP 通過檢查、第二次回內網 IP 建立連線。
+ * 要真正封住這個缺口必須改用 undici 自訂 Agent 指定已解析的 IP,同時保留原 hostname
+ * 於 Host header 與 TLS SNI —— 目前尚未實作,不要誤以為這一層已經擋住了。
  */
 async function assertSafeUrl(rawUrl) {
   let url;
@@ -84,8 +90,6 @@ async function assertSafeUrl(rawUrl) {
       throw new Error('目標位址位於私有或保留網段,禁止抓取');
     }
   }
-
-  return { url, resolvedIp: addresses[0].address };
 }
 
 module.exports = { assertSafeUrl, isBlockedIp };

@@ -12,7 +12,7 @@ const { buildScoreSummary } = require('../lib/scoring');
 
 const router = express.Router();
 
-router.post('/analyze', async (req, res) => {
+router.post('/analyze', async (req, res, next) => {
   const inputUrl = typeof req.body?.url === 'string' ? req.body.url.trim() : '';
   if (!inputUrl) {
     return res.status(400).json({ error: '請提供要檢測的網址' });
@@ -24,37 +24,47 @@ router.post('/analyze', async (req, res) => {
   try {
     page = await fetchHtml(normalizedUrl);
   } catch (err) {
+    // 抓取階段的失敗(網址無效、被 SSRF 防護擋下、逾時)是使用者輸入造成的,回 400
     return res.status(400).json({ error: err.message });
   }
 
-  const $ = cheerio.load(page.html);
-  const origin = new URL(page.finalUrl).origin;
+  // 這裡起的分析流程全部包在 try/catch 裡並手動 next(err),原因:
+  // Express 4 的錯誤處理中介層只接得到「同步拋出」或「明確 next(err)」的錯誤,
+  // 接不到 async handler 回傳的 rejected promise(那是 Express 5 才有的行為)。
+  // 少了這層,cheerio 解析失敗或某支 analyzer 在畸形資料上拋錯,會變成
+  // unhandled rejection —— 請求永遠不回應,而且 Node 18+ 預設會直接終止 process。
+  try {
+    const $ = cheerio.load(page.html);
+    const origin = new URL(page.finalUrl).origin;
 
-  const [robotsTxt, llmsTxt] = await Promise.all([
-    fetchTextFileBestEffort(origin, '/robots.txt'),
-    fetchTextFileBestEffort(origin, '/llms.txt'),
-  ]);
+    const [robotsTxt, llmsTxt] = await Promise.all([
+      fetchTextFileBestEffort(origin, '/robots.txt'),
+      fetchTextFileBestEffort(origin, '/llms.txt'),
+    ]);
 
-  const crawlerAccess = analyzeCrawlerAccess({ robotsTxt, llmsTxt });
-  const structuredData = analyzeStructuredData($);
-  const semanticHtml = analyzeSemanticHtml($);
-  const contentTrust = analyzeContentTrust($, {
-    finalUrl: page.finalUrl,
-    structuredDataNodes: structuredData.nodes,
-  });
+    const crawlerAccess = analyzeCrawlerAccess({ robotsTxt, llmsTxt });
+    const structuredData = analyzeStructuredData($);
+    const semanticHtml = analyzeSemanticHtml($);
+    const contentTrust = analyzeContentTrust($, {
+      finalUrl: page.finalUrl,
+      structuredDataNodes: structuredData.nodes,
+    });
 
-  const scoreSummary = buildScoreSummary({ structuredData, semanticHtml, contentTrust });
+    const scoreSummary = buildScoreSummary({ structuredData, semanticHtml, contentTrust });
 
-  res.json({
-    requestedUrl: inputUrl,
-    finalUrl: page.finalUrl,
-    httpStatus: page.status,
-    charset: page.charset,
-    redirectChain: page.redirectChain,
-    crawlerAccess,
-    overallScore: scoreSummary.overallScore,
-    categories: scoreSummary.categories,
-  });
+    res.json({
+      requestedUrl: inputUrl,
+      finalUrl: page.finalUrl,
+      httpStatus: page.status,
+      charset: page.charset,
+      redirectChain: page.redirectChain,
+      crawlerAccess,
+      overallScore: scoreSummary.overallScore,
+      categories: scoreSummary.categories,
+    });
+  } catch (err) {
+    next(err);
+  }
 });
 
 module.exports = router;
