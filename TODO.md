@@ -81,8 +81,31 @@ AEO/GEO 檢測工具的待辦清單。建立於 2026-08-06。
   `body a[href]` 已涵蓋前兩者。
 - `server/lib/analyzers/structured-data.js:74,79`：`['Organization', 'WebSite', 'LocalBusiness']`
   重複寫兩次；第 79 行為 190 字元的三元運算子。
-- 為什麼最後：純可讀性，不影響任何輸出。
+- 為什麼排在後面：純可讀性，不影響任何輸出。
 - 估時：20 分鐘
+
+### 9. `build:css` 的輸出格式與版控裡的 `main.css` 不一致
+
+- 檔案：`client/package.json:6`（`build:css` 帶 `--style=compressed`）／`client/css/main.css`（版控裡是展開格式）
+- 問題：照 README 或 `package.json` 跑 `npm run build:css`，會把整支 CSS 從展開格式改寫成
+  壓縮成一行，產生 700 行以上的無關 diff。真正的樣式改動會被埋在裡面，code review 看不出來。
+  `watch:css` 沒帶 `--style` 所以輸出展開格式，兩支 script 的產物互不相容，交替使用會來回翻攪整個檔案。
+- 修法：二選一——把 `build:css` 的 `--style=compressed` 拿掉（與 `watch:css` 一致，維持現在版控裡的格式），
+  或保留壓縮並把 `client/css/main.css` 一次性改成壓縮格式提交。前者的 diff 較乾淨，後者的產物較小。
+  這是取捨不是對錯，需要你決定。
+- 觸發紀錄：2026-08-06 修 HTTP 錯誤頁警示時實際踩到，當次改用
+  `npx sass scss/main.scss:css/main.css --no-source-map` 繞過。
+- 為什麼排在這裡：不影響工具的任何輸出，但只要有人照 script 跑就一定會踩到，而且修起來只要五分鐘。
+- 估時：5 分鐘（改 script）或 10 分鐘（改格式並重新提交產物）
+
+### 10. HTTP 410 與 404 共用同一段警示文案
+
+- 檔案：`client/js/main.js` 的 `statusBannerCopy`
+- 問題：410 Gone 的語意是「站方明確表示此資源已永久移除」，目前與 404 共用
+  「請先確認網址有沒有打錯」的說法。網址其實沒打錯，該做的是把指向它的連結拿掉。
+- 修法：410 獨立一個分支，文案改為說明資源已被永久移除、以及這對 AI 引擎既有索引的影響。
+- 為什麼最後：文案精確度問題，而且 410 在真實世界極少見（多數站方直接回 404）。
+- 估時：10 分鐘
 
 ---
 
