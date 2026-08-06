@@ -9,42 +9,40 @@ AEO/GEO 檢測工具的待辦清單。建立於 2026-08-06。
 
 ## 待辦（1 = 最重要）
 
-### 1. `isPathBlocked` 不比對路徑、`Allow` 規則解析了卻沒用
-
-- 檔案：`server/lib/analyzers/crawler-access.js:51-60`
-- 問題：
-  - 函式名為 `isPathBlocked`，但沒有接收被檢測頁面的路徑參數，只檢查有沒有 `Disallow: /`。
-    `Disallow: /blog/` 的站掃 `/blog/my-post` 會被判定「未封鎖」。
-  - `Allow` 規則在 `parseRobotsTxt` 被完整解析出來，但 `isPathBlocked` 從未使用。
-    `Disallow: /` 搭配 `Allow: /public/` 會被誤判成全站封鎖。
-  - 第 58 行的 `p === ''` 是死條件（`parseRobotsTxt:43` 的 `if (value)` 已濾掉空值）。
-    第 57 行註解說「`Disallow:` 空路徑等同全站封鎖」，這個理解是反的——
-    robots.txt 標準中 `Disallow:` 空值代表「允許全部」。目前行為正確，但註解會誤導後續維護。
-- 為什麼最優先：這是工具的招牌功能給出**錯誤的綠燈**。使用者依此判斷「AI 讀得到我的網站」
-  而實際讀不到，假陰性比沒有這個功能更糟。
-- 估時：1-2 小時
-
-### 2. HTTP 4xx/5xx 錯誤頁照樣被評分
+### 1. HTTP 4xx/5xx 錯誤頁照樣被評分
 
 - 檔案：`server/routes/analyze.js`（取得 `page` 之後未檢查 `page.status`）
 - 問題：掃到 404 頁面會產出一份看起來正常的報告，只有 meta 區塊角落的「HTTP 狀態」透露真相。
 - 修法：`status >= 400` 時比照 gate banner 在報告最上方給明確警示，或直接擋下不分析。
-- 為什麼排第二：同樣輸出錯誤結論，觸發機率更高——網址打錯一個字就會發生。成本低。
+- 為什麼最優先：輸出錯誤結論，而且觸發機率高——網址打錯一個字就會發生。成本低。
 - 估時：30 分鐘
+
+### 2. robots.txt 規則與頁面路徑的百分比編碼不一致
+
+- 檔案：`server/lib/analyzers/crawler-access.js` 的 `findLongestMatch`／`server/routes/analyze.js`
+- 問題：傳進去比對的 `finalUrl.pathname` 一定是百分比編碼過的（`/%E9%97%9C%E6%96%BC`），
+  但 robots.txt 裡的規則多半直接寫中文（`Disallow: /關於`）。兩邊字串對不起來，
+  規則會被當成沒命中。
+- 修法：依 RFC 9309，比對前把規則與路徑都正規化成百分比編碼（規則用 `encodeURI` 處理，
+  已編碼的部分要避免二次編碼）。
+- 為什麼排第二：與已修好的路徑比對是同一類「假的綠燈」，而且中文網站正是這個工具的主要對象。
+  排在第一項之後是因為觸發條件較窄（要站方真的用中文路徑寫 Disallow 才會踩到）。
+- 估時：40 分鐘
 
 ### 3. 零單元測試
 
-- 對象：`server/lib/scoring.js`、`crawler-access.js` 的 `parseRobotsTxt`、
-  `server/lib/charset.js` 的 `decodeHtmlBuffer`、`server/lib/ssrf-guard.js` 的 `isBlockedIp`、
-  `structured-data.js` 的 `flattenJsonLd` —— 全是無副作用的純函式。
+- 對象：`server/lib/scoring.js`、`crawler-access.js` 的 `parseRobotsTxt` 與 `isPathBlocked`
+  （兩者目前皆未 export，寫測試時要一併加上）、`server/lib/charset.js` 的 `decodeHtmlBuffer`、
+  `server/lib/ssrf-guard.js` 的 `isBlockedIp`、`structured-data.js` 的 `flattenJsonLd`
+  —— 全是無副作用的純函式。
 - 工具：Node 18+ 內建 `node:test`，不需新增依賴。
-- 為什麼排在其他所有事情之前：它是防止第 1、2 項修好之後又壞掉的機制。
-  第 1 項若有測試，「`Allow` 沒被使用」第一天就會被抓到。
+- 為什麼排在其他所有事情之前：它是防止已修好的東西又壞掉的機制。robots.txt 比對邏輯
+  （已完成的第一項）若有測試，「`Allow` 沒被使用」第一天就會被抓到。
 - 估時：2-3 小時
 
 ### 4. 追蹤的 AI 爬蟲清單不完整
 
-- 檔案：`server/lib/analyzers/crawler-access.js:6-17`
+- 檔案：`server/lib/analyzers/crawler-access.js` 的 `TRACKED_BOTS`
 - 缺少：`Applebot-Extended`、`meta-externalagent`（Meta AI）、`Amazonbot`、
   `Bytespider`（豆包／TikTok）、`cohere-ai`、`Diffbot`
 - 為什麼：站方封鎖了 Meta AI，報告完全不會提，也是假陰性。屬於資料補齊而非邏輯錯誤，投報率高。
@@ -110,6 +108,30 @@ AEO/GEO 檢測工具的待辦清單。建立於 2026-08-06。
 ---
 
 ## 已完成
+
+2026-08-06，robots.txt 路徑比對（原待辦第 1 項）已修復並實測驗證：
+
+- **`isPathBlocked` 不比對路徑、`Allow` 規則解析了卻沒用**（`server/lib/analyzers/crawler-access.js`）
+  `analyzeCrawlerAccess` 新增 `path` 參數（由 `analyze.js` 以 `finalUrl.pathname + finalUrl.search` 傳入），
+  比對改為 RFC 9309 的最長比對：Disallow 與 Allow 各取字面最長的命中規則，長度相同時 Allow 勝出。
+  規則支援 `*` 萬用字元與結尾 `$` 錨定（`Disallow: /*` 這種常見全站封鎖寫法純前綴比對會漏判）。
+  `note` 欄位改為說明命中哪一條規則、封鎖範圍是全站還是只有此路徑。
+  順帶把空值 `Allow` 濾掉，與空值 `Disallow` 的處理對稱（在最長比對下不影響結果，只是行為一致）。
+  **附帶的資安處理**：robots.txt 來自遠端不可信主機，規則轉正規表達式時連續 `*` 先收斂成一個，
+  並拒絕長度超過 500 字元或萬用字元超過 10 個的規則，避免 ReDoS 卡住 event loop。
+  驗證：17 個案例的臨時腳本全數通過，涵蓋子路徑封鎖、`Allow` 覆蓋 `Disallow`、
+  `Disallow: /*`、空值 `Disallow`、最長比對、長度相同時 Allow 勝出、指名群組優先於 `*`、
+  `$` 錨定、以及萬用字元過多的惡意規則（3000 字元路徑比對耗時 0ms）。
+- **`parseRobotsTxt` 把「只有空值規則」的群組與下一個 `User-agent` 合併**
+  （`server/lib/analyzers/crawler-access.js`）
+  原本用「disallow/allow 陣列是否為空」判斷群組結束，改為獨立的 `sawRule` 旗標。
+  修改前 `User-agent: GPTBot / Disallow:`（標準寫法，意思是「允許全部」）後面接的
+  `User-agent: CCBot / Disallow: /` 會被併進同一群組，導致 GPTBot 被誤判為全站封鎖。
+  驗證：新增兩個案例，確認空值群組不合併、連續 `User-agent` 仍共用同一群組。
+
+已知未處理的限制（已列入待辦）：規則與路徑的百分比編碼不一致（待辦第 2 項）；
+同一個 user-agent 出現兩組不連續規則群組時只有第一組生效（已寫進 JSDoc，暫不處理）。
+`note` 欄位目前只存在於 API 回應，前端 `renderCrawlerTable` 只讀 `blocked`，未改動 UI。
 
 2026-08-06，四項 P0 已修復並實測驗證：
 

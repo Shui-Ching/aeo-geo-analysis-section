@@ -35,14 +35,19 @@ router.post('/analyze', async (req, res, next) => {
   // unhandled rejection —— 請求永遠不回應,而且 Node 18+ 預設會直接終止 process。
   try {
     const $ = cheerio.load(page.html);
-    const origin = new URL(page.finalUrl).origin;
+    const finalUrl = new URL(page.finalUrl);
 
     const [robotsTxt, llmsTxt] = await Promise.all([
-      fetchTextFileBestEffort(origin, '/robots.txt'),
-      fetchTextFileBestEffort(origin, '/llms.txt'),
+      fetchTextFileBestEffort(finalUrl.origin, '/robots.txt'),
+      fetchTextFileBestEffort(finalUrl.origin, '/llms.txt'),
     ]);
 
-    const crawlerAccess = analyzeCrawlerAccess({ robotsTxt, llmsTxt });
+    // robots.txt 的比對對象是路徑加 query,不含 origin 與 hash。
+    const crawlerAccess = analyzeCrawlerAccess({
+      robotsTxt,
+      llmsTxt,
+      path: finalUrl.pathname + finalUrl.search,
+    });
     const structuredData = analyzeStructuredData($);
     const semanticHtml = analyzeSemanticHtml($);
     const contentTrust = analyzeContentTrust($, {
