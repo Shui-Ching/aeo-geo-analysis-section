@@ -96,6 +96,11 @@ AEO/GEO 檢測工具的待辦清單。建立於 2026-08-06。
 - **SCSS 裡沒有任何 `url()`**（已 grep 確認），所以編譯後的 CSS 多一層目錄不會弄壞相對資源路徑。
 - 驗證：`npm test` → `# pass 97 / # fail 0`（測試數不變——沒有任何測試引用 client 路徑，
   這次跑測試是回歸把關，不是目標）。
+- **本檔內所有指向這三支檔案的路徑一併更新為新位置**，包含「已完成」區塊裡的舊紀錄
+  （2026-08-06 的「HTTP 4xx/5xx 錯誤頁警示」與「追蹤的 AI 爬蟲清單」兩則）。
+  取捨是「路徑可以直接點開」勝過「保留當時的原文」；各則開頭的
+  「完成時列為待辦第 N 項」仍然記錄當時的狀態，沒有改。
+  `client/scss/` 沒有搬動，指向 scss 的路徑一律維持原樣。
 - **未涵蓋的部分**：沒有實際開瀏覽器目視確認頁面；上述 200 只證明檔案送得出去，
   不證明畫面正常。三支檔案的內容一個位元組都沒改，風險僅限於路徑接錯，而路徑已由 200 證實。
 
@@ -218,7 +223,7 @@ AEO/GEO 檢測工具的待辦清單。建立於 2026-08-06。
   `cohere-training-data-crawler` 負責訓練資料，`cohere-ai` 目前沒有官方文件說明，
   第三方觀測認為是聊天產品依使用者提問即時取用。這一欄的措辭有不確定性。
 - **前端未改動**：`renderCrawlerTable` 是直接跑 `crawlerAccess.bots` 的迴圈，新增的六列
-  自動出現，不需要動 `client/js/main.js` 或 HTML。
+  自動出現，不需要動 `client/public/js/main.js` 或 HTML。
 - `test/crawler-access.test.js` 新增三個測試：ua 不重複且欄位齊全、八支新爬蟲都在名單裡、
   robots.txt 寫成 `Meta-ExternalAgent`／`Cohere-AI`／`BYTESPIDER` 這種實務大小寫仍能命中。
   最後那條的 `deepEqual` 順帶鎖住「agent 是完整比對而非前綴比對」——Meta 三支共用
@@ -301,7 +306,7 @@ AEO/GEO 檢測工具的待辦清單。建立於 2026-08-06。
 
 2026-08-06，HTTP 4xx/5xx 錯誤頁警示（完成時列為待辦第 1 項）已完成並實測驗證：
 
-- **錯誤頁照樣被評分卻沒有任何警示**（`client/index.html`、`client/js/main.js`、
+- **錯誤頁照樣被評分卻沒有任何警示**（`client/public/index.html`、`client/public/js/main.js`、
   `client/scss/components/_report.scss`）
   報告最上方新增 `status-banner`，`httpStatus >= 400` 時顯示，位置在 `gate-banner` 之前
   （HTTP 錯誤比 robots.txt 封鎖更根本，且兩者可能同時發生）。
