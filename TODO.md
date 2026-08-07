@@ -9,14 +9,7 @@ AEO/GEO 檢測工具的待辦清單。建立於 2026-08-06。
 
 ## 待辦（1 = 最重要）
 
-### 1. 依賴 Google Fonts
-
-- 檔案：`client/public/index.html:8-13`
-- 問題：離線環境下字型掉回系統預設、視覺整個垮掉；同時每次開啟都把使用者資訊送給 Google。
-- 修法：改用本地 woff2 字型檔（專案已有 SCSS build step，成本不高）。
-- 估時：40 分鐘
-
-### 2. 冗餘 selector 與重複的類型陣列
+### 1. 冗餘 selector 與重複的類型陣列
 
 - `server/lib/analyzers/semantic-html.js:23`：`$('script[src], script:not([src])')` 等同 `$('script')`，
   且 filter 內連續呼叫三次 `$(el).attr('type')`。
@@ -27,7 +20,7 @@ AEO/GEO 檢測工具的待辦清單。建立於 2026-08-06。
 - 為什麼排在後面：純可讀性，不影響任何輸出。
 - 估時：20 分鐘
 
-### 3. `build:css` 的輸出格式與版控裡的 `main.css` 不一致
+### 2. `build:css` 的輸出格式與版控裡的 `main.css` 不一致
 
 - 檔案：`client/package.json:6`（`build:css` 帶 `--style=compressed`）／`client/public/css/main.css`（版控裡是展開格式）
 - 問題：照 README 或 `package.json` 跑 `npm run build:css`，會把整支 CSS 從展開格式改寫成
@@ -38,11 +31,13 @@ AEO/GEO 檢測工具的待辦清單。建立於 2026-08-06。
   這是取捨不是對錯，需要你決定。
 - 觸發紀錄：2026-08-06 修 HTTP 錯誤頁警示時實際踩到，當次改用
   `npx sass scss/main.scss:css/main.css --no-source-map` 繞過（該路徑為當時的舊位置，
-  現已改為 `public/css/main.css`）。
+  現已改為 `public/css/main.css`）。2026-08-07 做本地字型時第三次繞過（`express.static`
+  收斂那次是第二次），同樣改用 `npx sass`。三次都不敢跑 `npm run build:css`，
+  等於這兩支 script 現在沒有人用，這件事本身就是這一項還沒解的代價。
 - 為什麼排在這裡：不影響工具的任何輸出，但只要有人照 script 跑就一定會踩到，而且修起來只要五分鐘。
 - 估時：5 分鐘（改 script）或 10 分鐘（改格式並重新提交產物）
 
-### 4. HTTP 410 與 404 共用同一段警示文案
+### 3. HTTP 410 與 404 共用同一段警示文案
 
 - 檔案：`client/public/js/main.js` 的 `statusBannerCopy`
 - 問題：410 Gone 的語意是「站方明確表示此資源已永久移除」，目前與 404 共用
@@ -73,6 +68,62 @@ AEO/GEO 檢測工具的待辦清單。建立於 2026-08-06。
 
 ## 已完成
 
+2026-08-07，依賴 Google Fonts（完成時列為待辦第 1 項）已改為本地字型並實測驗證：
+
+- **三支字型改為自架，`index.html` 不再有任何外部請求**（`client/public/fonts/`、
+  `client/scss/_fonts.scss`、`client/scss/main.scss`、`client/public/index.html`）
+  移除兩條 `preconnect` 與那條 `fonts.googleapis.com` 的 stylesheet，共三個 `<link>`。
+  **只移掉 stylesheet 那一條不夠**——`preconnect` 本身就會對 Google 開 TCP／TLS 連線，
+  隱私問題原封不動。新增 `client/scss/_fonts.scss` 放六段 `@font-face`，
+  在 `main.scss` 以 `@use 'fonts';` 排在第一行（要在 `reset` 之前）。
+  **沒有放進 `variables/_variables-font.scss`**：那支被多個檔案 `@use`，
+  裡面只該有變數；放宣告進去會在每個載入點重複輸出。
+- **三支都是可變字型（variable font），所以是六個檔案而不是十個**
+  原本的 URL 指名 Fraunces 500/600/700、IBM Plex Sans 400/500/600、
+  JetBrains Mono 400/500/600/700 共十種字重，但 Google Fonts 對這三支回傳的是
+  同一個可變字型檔——十種字重指向的檔案其實只有三個。改用 `wght@400..600` 這種
+  區間寫法拿到完全相同的檔案，`@font-face` 的 `font-weight` 寫成 `400 600` 區間。
+  **已逐字比對驗證**：用舊的列舉式 URL 與新的區間式 URL 各抓一次 CSS，
+  latin 與 latin-ext 六條 `src` 的 gstatic 網址完全相同，所以算繪結果不可能改變。
+  IBM Plex Sans 的 `font-stretch: 100%` 是可變字型必要的宣告，照抄未動。
+- **只保留 latin 與 latin-ext 兩個 subset，捨棄 cyrillic、cyrillic-ext、greek、vietnamese**
+  原本會下載 15 個 subset 檔，介面文字是繁體中文加英數，用不到那四類。
+  保留 latin-ext 的理由是使用者輸入的網址可能含重音拉丁字母，而 `unicode-range`
+  讓瀏覽器只在真的出現該範圍字元時才下載，平常一個位元組都不花。
+  六個檔案合計 241 KB（Fraunces 124 KB、IBM Plex Sans 75 KB、JetBrains Mono 42 KB）。
+  `unicode-range` 字串直接從 Google 的 CSS 複製，並在編譯後以 `sort -u` 比對確認
+  兩條範圍與原文逐字相符——手打這種字串是最容易出錯而且看不出來的地方。
+- **`url()` 的相對基準是編譯後的 CSS 而不是 SCSS 原始碼**：Dart Sass 不改寫 `url()`，
+  原樣輸出。SCSS 在 `client/scss/`，產物在 `client/public/css/main.css`，
+  所以路徑要寫 `../fonts/`（解析為 `client/public/fonts/`）而不是 `../public/fonts/`。
+  這是這次唯一會靜默壞掉的地方，已由下方的 HTTP 200 證實。
+- **授權**：自架等同再散布，三支都是 SIL OFL 1.1，已放 `client/public/fonts/OFL.txt`
+  （三則版權宣告從各自的上游 repo 取得，後接完整授權條文）。
+- 檔名帶上游版本號（`fraunces-v38-latin.woff2` 等）：換版時檔名一起換，
+  順便讓瀏覽器快取自然失效，也讓過期檔案一眼看得出來。
+- **驗收標準是負向的，「頁面還打得開」測不到這一項**：實際啟動 server（PORT=3125）
+  雙向確認——六支 `/fonts/*.woff2` 全部回 200、`content-type: font/woff2`、
+  `content-length` 與磁碟位元組數相同，且取回的內容前四個位元組是 `wOF2` 魔術數字；
+  `/`、`/css/main.css`、`/js/main.js` 仍為 200。
+  另以 grep 確認整個 repo 沒有任何 `googleapis`／`gstatic`／`fonts.google` 字串，
+  `index.html` 與編譯後的 `main.css` 裡唯一剩下的 `https://` 是輸入框的 placeholder 文字。
+- **`core.autocrlf = true` 會不會弄壞二進位檔**：這台機器開著 autocrlf，已用
+  `git diff --cached --numstat` 確認六個 woff2 都被判定為二進位（顯示為 `-`），
+  換行轉換不會套用；`git cat-file -s` 的 blob 大小與磁碟位元組數一一相符。
+  沒有新增 `.gitattributes`——git 的自動判定在這裡已經正確，多一個檔案沒有意義。
+- **沒有跑 `npm run build:css`**：它帶 `--style=compressed`，會把整支 CSS 壓成一行，
+  56 行的 `@font-face` diff 會被埋進 700 行的格式變動裡，而且等於替待辦第 2 項
+  做了本來要你決定的取捨。改用 `npx sass scss/main.scss:public/css/main.css --no-source-map`，
+  `git diff --stat` 確認 `main.css` 只有 56 行新增、0 行刪除。
+- 驗證：`npm test` → `# pass 97 / # fail 0`（測試數不變——沒有任何測試引用 client 的字型，
+  這次跑測試是回歸把關，不是目標）。
+- **未涵蓋的部分**：沒有實際開瀏覽器目視確認字型有算繪出來；上述 200 只證明檔案送得出去，
+  「看起來和以前一樣」是從「六個 woff2 與 Google 原本送的是同一批位元組」推得的，不是看到的。
+  另外，`$font-display` 等變數裡的中日韓 fallback `Noto Serif TC`／`Noto Sans TC`
+  本來就不在 Google Fonts 的請求裡，只有使用者自己裝了才生效——這次沒有改變這件事，
+  所以「離線字型不掉」目前只對拉丁字母成立，中文仍然吃系統字型。要不要一併自架
+  中文字型是另一件事（Noto Sans TC 完整檔約 8 MB，需要 subset 才實際），未列入待辦。
+
 2026-08-07，`express.static` 開放過多檔案（完成時列為待辦第 1 項）已收斂並實測驗證：
 
 - **靜態根目錄從 `client/` 改為 `client/public/`**（`server/index.js`、`client/package.json`）
@@ -84,7 +135,8 @@ AEO/GEO 檢測工具的待辦清單。建立於 2026-08-06。
   改成 `public/css/main.css`（相對於 `client/`，不是 repo 根目錄）。只改一支的話兩支會寫到
   不同目錄，其中一支的產物靜默地不再被服務。
   **`--style` 旗標刻意維持原樣**：`build:css` 的 `--style=compressed` 與版控格式不一致是
-  待辦第 3 項，需要你決定取捨，不在這次範圍內。也因此驗證時**沒有跑 `npm run build:css`**，
+  待辦裡「`build:css` 的輸出格式」那一項（寫這則時是第 3 項，2026-08-07 之後為第 2 項），
+  需要你決定取捨，不在這次範圍內。也因此驗證時**沒有跑 `npm run build:css`**，
   改用 `npx sass scss/main.scss:public/css/main.css --no-source-map` 重新編譯，
   產物與版控中的 `main.css` 位元組完全相同（`git status` 無 modified），
   同時證明新的相對路徑解析正確。
