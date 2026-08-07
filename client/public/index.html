@@ -5,8 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>AEO/GEO 訊號掃描器</title>
     <meta name="description" content="貼上網址，掃描頁面對 AI 答案引擎(ChatGPT、Claude、Perplexity)的可讀性、結構化資料與內容可信度訊號。" />
-    <link rel="icon" href="images/favicon.ico?v=1.0.1" type="image/x-icon" />
-    <link rel="stylesheet" href="css/main.css?v=1.0.1" />
+    <link rel="icon" href="images/favicon.ico?v=1.1.0" type="image/x-icon" />
+    <link rel="stylesheet" href="css/main.css?v=1.1.0" />
     <script defer src="https://cloud.umami.is/script.js" data-website-id="6cd2abb2-278f-4dd3-a86b-39aa9ac33f9d"></script>
 </head>
 <body>
@@ -16,7 +16,7 @@
                 <p class="site-header-eyebrow mono">AEO / GEO SIGNAL SCANNER</p>
                 <h1 class="site-header-title">AI 讀得到你的網站嗎？</h1>
                 <p class="site-header-desc">
-                    貼上網址，掃描頁面對 AI 答案引擎(ChatGPT、Claude、Perplexity)是否可讀、可信、可被引用。 <br>這是啟發式評分工具，不是官方標準——每一項檢查都附上判定依據，而不是只給一個數字。
+                    貼上網址，掃描頁面對 AI 答案引擎(ChatGPT、Claude、Perplexity)是否可讀、可信、可被引用。這是啟發式評分工具，不是官方標準——每一項檢查都附上判定依據，而不是只給一個數字。
                 </p>
             </header>
 
@@ -47,6 +47,13 @@
 
             <section class="report" id="report" hidden>
                 <div class="report-meta" id="report-meta"></div>
+
+                <div class="report-actions">
+                    <button type="button" class="btn btn-secondary" id="download-report">下載報表</button>
+                    <p class="report-actions-hint">
+                        單一 HTML 檔，含本次結果與上次掃描的差異。可直接用瀏覽器開啟，或用瀏覽器的列印功能存成 PDF。
+                    </p>
+                </div>
 
                 <div class="status-banner" id="status-banner" hidden>
                     <div class="status-banner-icon">!</div>
@@ -79,6 +86,16 @@
                     <div class="score-breakdown" id="score-breakdown"></div>
                 </div>
 
+                <section class="compare-panel" id="compare-panel" hidden>
+                    <div class="compare-panel-head">
+                        <h2 class="compare-panel-title">與上次掃描比較</h2>
+                        <p class="compare-panel-baseline mono" id="compare-baseline"></p>
+                    </div>
+                    <p class="compare-panel-note" id="compare-note" hidden></p>
+                    <div class="compare-score-row" id="compare-score-row"></div>
+                    <div class="compare-change-list" id="compare-change-list"></div>
+                </section>
+
                 <div class="category-list" id="category-list"></div>
 
                 <div class="crawler-section">
@@ -101,6 +118,12 @@
         </div>
     </div>
 
-    <script src="js/main.js?v=1.0.1"></script>
+    <button type="button" class="back-to-top" id="back-to-top" aria-label="回到頂端">
+        <svg viewBox="0 0 20 20" fill="none" aria-hidden="true">
+            <path d="M10 15V5M10 5L5 10M10 5L15 10" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" />
+        </svg>
+    </button>
+
+    <script src="js/main.js?v=1.1.0"></script>
 </body>
 </html>

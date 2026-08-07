@@ -33,6 +33,26 @@
     word-break: break-all;
 }
 
+// 報表下載列。緊接在技術讀出條下面,不放在報告最底部 ——
+// 使用者反覆掃描比對時要的是隨手就按得到,不是捲到最後才找得到。
+.report-actions {
+    display: flex;
+    align-items: center;
+    gap: $spacing-4;
+    margin-bottom: $spacing-6;
+
+    @media (max-width: $bp-sm-down) {
+        flex-direction: column;
+        align-items: stretch;
+    }
+}
+
+.report-actions-hint {
+    font-size: $font-size-xs;
+    color: $color-text-tertiary;
+    line-height: 1.6;
+}
+
 // HTTP 4xx/5xx 警示旗:抓到的根本不是目標頁面,比 robots.txt 封鎖更根本,
 // 所以排在 gate-banner 之前。左側實心色條讓兩張紅旗同時出現時不會糊成一塊。
 // display 的 :not([hidden]) 寫法理由同下方 gate-banner。

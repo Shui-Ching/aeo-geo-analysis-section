@@ -35,3 +35,21 @@
         pointer-events: none;
     }
 }
+
+// 次要動作(目前是報表下載)。用外框而非實心,避免跟「開始掃描」那顆主 CTA 爭視覺重量。
+.btn-secondary {
+    background: $color-surface;
+    border: 1px solid $color-border-strong;
+    color: $color-text-primary;
+
+    &:hover {
+        border-color: $color-signal;
+        color: $color-signal;
+        background: $color-signal-dim;
+    }
+
+    &:disabled {
+        opacity: 0.5;
+        pointer-events: none;
+    }
+}

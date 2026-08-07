@@ -1,0 +1,52 @@
+@use '../variables' as *;
+
+// 固定在視窗右下角,捲動超過一個視窗高度才浮現 —— 避免使用者一進頁面就看到一顆
+// 「回頂端」的按鈕(根本還在頂端)。顯示/隱藏由 JS 切換 is-visible。
+.back-to-top {
+    position: fixed;
+    right: $spacing-6;
+    bottom: $spacing-6;
+    z-index: 5;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    background: $color-surface;
+    border: 1px solid $color-border-strong;
+    color: $color-signal;
+    box-shadow: 0 8px 24px -8px rgba($color-black, 0.3);
+    opacity: 0;
+    visibility: hidden;
+    transform: translateY(12px);
+    transition: opacity 0.2s ease, transform 0.2s ease, visibility 0.2s, border-color 0.15s ease, background 0.15s ease;
+    cursor: pointer;
+
+    &.is-visible {
+        opacity: 1;
+        visibility: visible;
+        transform: translateY(0);
+    }
+
+    &:hover {
+        border-color: $color-signal;
+        background: $color-signal-dim;
+    }
+
+    &:active {
+        transform: translateY(0) scale(0.94);
+    }
+
+    svg {
+        width: 20px;
+        height: 20px;
+    }
+
+    @media (max-width: $bp-sm-down) {
+        right: $spacing-4;
+        bottom: $spacing-4;
+        width: 44px;
+        height: 44px;
+    }
+}

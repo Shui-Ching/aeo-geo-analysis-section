@@ -1,0 +1,178 @@
+@use '../variables' as *;
+
+// 與上次掃描的差異。位置在分數總覽與三大分類卡片之間:
+// 先看到本次分數,再看到「跟上次比動了什麼」,最後才進到逐項明細。
+// display 的 :not([hidden]) 寫法理由同 report 裡的 gate-banner:
+// 避免跟原生 [hidden] { display: none } 特異度打平,造成 JS 設定 hidden 也擋不住它顯示。
+.compare-panel:not([hidden]) {
+    display: block;
+    padding: $spacing-6;
+    margin-bottom: $spacing-8;
+    background: $color-surface;
+    border: 1px solid $color-border;
+    border-radius: $radius-card;
+}
+
+.compare-panel-head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: $spacing-4;
+    flex-wrap: wrap;
+    margin-bottom: $spacing-4;
+}
+
+.compare-panel-title {
+    font-size: $font-size-md;
+}
+
+.compare-panel-baseline {
+    font-family: $font-mono;
+    font-size: $font-size-xs;
+    color: $color-text-tertiary;
+}
+
+.compare-panel-note {
+    font-size: $font-size-xs;
+    color: $color-text-secondary;
+    line-height: 1.6;
+    padding: $spacing-3 $spacing-4;
+    margin-bottom: $spacing-4;
+    background: $color-surface-raised;
+    border-radius: $radius-badge;
+
+    // 兩次之中有一次抓到的是 4xx/5xx 錯誤頁,分數差不能照字面解讀
+    &.is-warn {
+        background: $color-warn-bg;
+        color: $color-warn;
+    }
+}
+
+// 總分與三大分類的變化,一列四格
+.compare-score-row {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: $spacing-3;
+    margin-bottom: $spacing-6;
+
+    @media (max-width: $bp-md-down) {
+        grid-template-columns: repeat(2, 1fr);
+    }
+
+    @media (max-width: $bp-sm-down) {
+        grid-template-columns: 1fr;
+    }
+}
+
+.compare-score-item {
+    display: flex;
+    flex-direction: column;
+    gap: $spacing-1;
+    padding: $spacing-3 $spacing-4;
+    background: $color-surface-raised;
+    border-radius: $radius-badge;
+}
+
+.compare-score-label {
+    font-size: $font-size-xs;
+    color: $color-text-tertiary;
+}
+
+.compare-score-values {
+    font-family: $font-mono;
+    font-size: $font-size-sm;
+    color: $color-text-primary;
+}
+
+.compare-delta {
+    font-family: $font-mono;
+    font-size: $font-size-md;
+    font-weight: 700;
+
+    &.is-up {
+        color: $color-pass;
+    }
+    &.is-down {
+        color: $color-fail;
+    }
+    &.is-flat {
+        color: $color-text-tertiary;
+    }
+}
+
+.compare-group {
+    margin-bottom: $spacing-6;
+
+    &:last-child {
+        margin-bottom: 0;
+    }
+}
+
+.compare-group-title {
+    font-size: $font-size-sm;
+    margin-bottom: $spacing-2;
+}
+
+.compare-change-row {
+    padding: $spacing-3 0;
+    border-top: 1px solid $color-border;
+}
+
+.compare-change-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: $spacing-4;
+    flex-wrap: wrap;
+}
+
+.compare-change-heading {
+    display: flex;
+    align-items: baseline;
+    gap: $spacing-2;
+    flex-wrap: wrap;
+}
+
+.compare-change-category {
+    font-family: $font-mono;
+    font-size: $font-size-xs;
+    color: $color-text-tertiary;
+}
+
+.compare-change-label {
+    font-size: $font-size-sm;
+    font-weight: 500;
+}
+
+.compare-change-transition {
+    display: flex;
+    align-items: center;
+    gap: $spacing-2;
+    flex-shrink: 0;
+}
+
+.compare-arrow {
+    font-family: $font-mono;
+    font-size: $font-size-xs;
+    color: $color-text-tertiary;
+}
+
+.compare-change-evidence {
+    font-family: $font-mono;
+    font-size: $font-size-xs;
+    color: $color-text-secondary;
+    line-height: 1.6;
+    margin-top: $spacing-1;
+}
+
+.compare-change-plain {
+    font-size: $font-size-xs;
+    color: $color-text-secondary;
+    line-height: 1.6;
+}
+
+.compare-empty {
+    font-size: $font-size-xs;
+    color: $color-text-tertiary;
+    line-height: 1.6;
+}
