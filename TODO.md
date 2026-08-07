@@ -150,7 +150,8 @@ AEO/GEO 檢測工具的待辦清單。建立於 2026-08-06。
   換行轉換不會套用；`git cat-file -s` 的 blob 大小與磁碟位元組數一一相符。
   沒有新增 `.gitattributes`——git 的自動判定在這裡已經正確，多一個檔案沒有意義。
 - **沒有跑 `npm run build:css`**：它帶 `--style=compressed`，會把整支 CSS 壓成一行，
-  56 行的 `@font-face` diff 會被埋進 700 行的格式變動裡，而且等於替待辦第 2 項
+  56 行的 `@font-face` diff 會被埋進 700 行的格式變動裡，而且等於替待辦裡
+  「`build:css` 的輸出格式」那一項（寫這則時是第 2 項，同日「冗餘 selector」那則完成後為第 1 項）
   做了本來要你決定的取捨。改用 `npx sass scss/main.scss:public/css/main.css --no-source-map`，
   `git diff --stat` 確認 `main.css` 只有 56 行新增、0 行刪除。
 - 驗證：`npm test` → `# pass 97 / # fail 0`（測試數不變——沒有任何測試引用 client 的字型，
