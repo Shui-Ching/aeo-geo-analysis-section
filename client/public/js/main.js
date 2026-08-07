@@ -100,7 +100,8 @@ function renderMeta(data) {
 }
 
 // HTTP 錯誤狀態的說法。分開寫是因為使用者要採取的行動完全不同:
-// 403 要調整站方的 bot 防護規則,404 要檢查網址有沒有打錯。
+// 403 要調整站方的 bot 防護規則,404 要檢查網址有沒有打錯,
+// 410 的網址沒打錯,該做的是把站內外指向它的連結拿掉。
 function statusBannerCopy(status) {
     if (status === 401 || status === 403) {
         return {
@@ -108,10 +109,16 @@ function statusBannerCopy(status) {
             desc: '通常是 Cloudflare 之類的 bot 防護把本工具的 User-Agent 擋下來了。抓到的是那張拒絕頁面，不是你要檢測的內容。',
         };
     }
-    if (status === 404 || status === 410) {
+    if (status === 404) {
         return {
-            title: `這個網址回傳 HTTP ${status}，頁面不存在`,
+            title: '這個網址回傳 HTTP 404，頁面不存在',
             desc: '請先確認網址有沒有打錯、或該頁面是不是已經下架。抓到的是站方的錯誤頁面，不是你要檢測的內容。',
+        };
+    }
+    if (status === 410) {
+        return {
+            title: '這個網址回傳 HTTP 410，站方表明此頁面已永久移除',
+            desc: '410 與 404 不同，它是站方主動宣告「這個頁面永久不會再回來」，所以網址通常沒有打錯，要做的是把站內外指向它的連結改掉或移除，避免 AI 引擎與使用者一再走進死路。抓到的是站方的下架頁面，不是你要檢測的內容。',
         };
     }
     if (status >= 500) {
