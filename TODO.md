@@ -9,22 +9,14 @@ AEO/GEO 檢測工具的待辦清單。建立於 2026-08-06。
 
 ## 待辦（1 = 最重要）
 
-### 1. `express.static` 開放過多檔案
+### 1. 依賴 Google Fonts
 
-- 檔案：`server/index.js:11`
-- 問題：`client/package.json`、`client/package-lock.json`、`client/scss/*.scss` 全部可從瀏覽器下載。
-- 修法：把 `index.html`、`css/`、`js/` 移到 `client/public/`，只服務那一層。
-- 為什麼不更前面：目前這些檔案沒有機密，屬於「不該暴露但沒實害」。
-- 估時：20 分鐘
-
-### 2. 依賴 Google Fonts
-
-- 檔案：`client/index.html:8-13`
+- 檔案：`client/public/index.html:8-13`
 - 問題：離線環境下字型掉回系統預設、視覺整個垮掉；同時每次開啟都把使用者資訊送給 Google。
 - 修法：改用本地 woff2 字型檔（專案已有 SCSS build step，成本不高）。
 - 估時：40 分鐘
 
-### 3. 冗餘 selector 與重複的類型陣列
+### 2. 冗餘 selector 與重複的類型陣列
 
 - `server/lib/analyzers/semantic-html.js:23`：`$('script[src], script:not([src])')` 等同 `$('script')`，
   且 filter 內連續呼叫三次 `$(el).attr('type')`。
@@ -35,23 +27,24 @@ AEO/GEO 檢測工具的待辦清單。建立於 2026-08-06。
 - 為什麼排在後面：純可讀性，不影響任何輸出。
 - 估時：20 分鐘
 
-### 4. `build:css` 的輸出格式與版控裡的 `main.css` 不一致
+### 3. `build:css` 的輸出格式與版控裡的 `main.css` 不一致
 
-- 檔案：`client/package.json:6`（`build:css` 帶 `--style=compressed`）／`client/css/main.css`（版控裡是展開格式）
+- 檔案：`client/package.json:6`（`build:css` 帶 `--style=compressed`）／`client/public/css/main.css`（版控裡是展開格式）
 - 問題：照 README 或 `package.json` 跑 `npm run build:css`，會把整支 CSS 從展開格式改寫成
   壓縮成一行，產生 700 行以上的無關 diff。真正的樣式改動會被埋在裡面，code review 看不出來。
   `watch:css` 沒帶 `--style` 所以輸出展開格式，兩支 script 的產物互不相容，交替使用會來回翻攪整個檔案。
 - 修法：二選一——把 `build:css` 的 `--style=compressed` 拿掉（與 `watch:css` 一致，維持現在版控裡的格式），
-  或保留壓縮並把 `client/css/main.css` 一次性改成壓縮格式提交。前者的 diff 較乾淨，後者的產物較小。
+  或保留壓縮並把 `client/public/css/main.css` 一次性改成壓縮格式提交。前者的 diff 較乾淨，後者的產物較小。
   這是取捨不是對錯，需要你決定。
 - 觸發紀錄：2026-08-06 修 HTTP 錯誤頁警示時實際踩到，當次改用
-  `npx sass scss/main.scss:css/main.css --no-source-map` 繞過。
+  `npx sass scss/main.scss:css/main.css --no-source-map` 繞過（該路徑為當時的舊位置，
+  現已改為 `public/css/main.css`）。
 - 為什麼排在這裡：不影響工具的任何輸出，但只要有人照 script 跑就一定會踩到，而且修起來只要五分鐘。
 - 估時：5 分鐘（改 script）或 10 分鐘（改格式並重新提交產物）
 
-### 5. HTTP 410 與 404 共用同一段警示文案
+### 4. HTTP 410 與 404 共用同一段警示文案
 
-- 檔案：`client/js/main.js` 的 `statusBannerCopy`
+- 檔案：`client/public/js/main.js` 的 `statusBannerCopy`
 - 問題：410 Gone 的語意是「站方明確表示此資源已永久移除」，目前與 404 共用
   「請先確認網址有沒有打錯」的說法。網址其實沒打錯，該做的是把指向它的連結拿掉。
 - 修法：410 獨立一個分支，文案改為說明資源已被永久移除、以及這對 AI 引擎既有索引的影響。
@@ -63,11 +56,11 @@ AEO/GEO 檢測工具的待辦清單。建立於 2026-08-06。
 ## 公開部署時的重新排序
 
 上述順序假設本機單機使用。若部署到公開網址，此 endpoint 等同「任何人都能免費驅動、
-去抓任意網址」的代理，會被拿來當 SSRF 掃描器與流量放大器。此時順序改為：
+去抓任意網址」的代理，會被拿來當 SSRF 掃描器與流量放大器。
 
-1. 第 1 項（`express.static` 目錄收斂）
-
-原本排在這裡的 DNS rebinding 防護與速率限制／錯誤訊息外洩已於 2026-08-06 完成，見「已完成」。
+原本排在這一節的三項——DNS rebinding 防護、速率限制／錯誤訊息外洩、`express.static`
+目錄收斂——均已於 2026-08-06 完成，見「已完成」。目前待辦清單裡沒有任何項目會因為
+改成公開部署而需要提前。
 
 公開部署前另外要處理、目前不在清單上的兩件事（本機使用不構成問題，故未列為待辦）：
 
@@ -79,6 +72,32 @@ AEO/GEO 檢測工具的待辦清單。建立於 2026-08-06。
 ---
 
 ## 已完成
+
+2026-08-07，`express.static` 開放過多檔案（完成時列為待辦第 1 項）已收斂並實測驗證：
+
+- **靜態根目錄從 `client/` 改為 `client/public/`**（`server/index.js`、`client/package.json`）
+  `index.html`、`css/`、`js/` 以 `git mv` 移進 `client/public/`，`express.static` 只服務那一層。
+  三者一起移動，所以 `index.html` 裡 `css/main.css` 與 `js/main.js` 兩條相對路徑不用改，
+  HTML 完全沒有改動。留在 `client/` 的 `package.json`、`package-lock.json`、`scss/`
+  從此不在靜態根目錄底下，瀏覽器要不到。
+- **`build:css` 與 `watch:css` 兩支都要改輸出路徑**（`client/package.json:6-7`）
+  改成 `public/css/main.css`（相對於 `client/`，不是 repo 根目錄）。只改一支的話兩支會寫到
+  不同目錄，其中一支的產物靜默地不再被服務。
+  **`--style` 旗標刻意維持原樣**：`build:css` 的 `--style=compressed` 與版控格式不一致是
+  待辦第 3 項，需要你決定取捨，不在這次範圍內。也因此驗證時**沒有跑 `npm run build:css`**，
+  改用 `npx sass scss/main.scss:public/css/main.css --no-source-map` 重新編譯，
+  產物與版控中的 `main.css` 位元組完全相同（`git status` 無 modified），
+  同時證明新的相對路徑解析正確。
+- **驗收標準是負向的，「頁面還打得開」測不到這一項**：實際啟動 server（PORT=3124）
+  雙向確認——`/`、`/css/main.css`、`/js/main.js` 三者回 200；
+  `/package.json`、`/package-lock.json`、`/scss/main.scss`、`/scss/components/_report.scss`
+  四者回 404。只有後面那組成立才代表這一項做完。
+  404 走的是 Express 預設處理，`index.js` 的錯誤處理 middleware 只接例外，未改動。
+- **SCSS 裡沒有任何 `url()`**（已 grep 確認），所以編譯後的 CSS 多一層目錄不會弄壞相對資源路徑。
+- 驗證：`npm test` → `# pass 97 / # fail 0`（測試數不變——沒有任何測試引用 client 路徑，
+  這次跑測試是回歸把關，不是目標）。
+- **未涵蓋的部分**：沒有實際開瀏覽器目視確認頁面；上述 200 只證明檔案送得出去，
+  不證明畫面正常。三支檔案的內容一個位元組都沒改，風險僅限於路徑接錯，而路徑已由 200 證實。
 
 2026-08-06，`/api/analyze` 的速率限制與錯誤訊息外洩（完成時列為待辦第 1 項）已修復並實測驗證：
 
