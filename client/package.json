@@ -1,9 +1,9 @@
 {
   "name": "aeogeo-checker-client",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "private": true,
   "scripts": {
-    "build:css": "sass scss/main.scss:public/css/main.css --style=compressed --no-source-map",
+    "build:css": "sass scss/main.scss:public/css/main.css --no-source-map",
     "watch:css": "sass scss/main.scss:public/css/main.css --watch --no-source-map"
   },
   "devDependencies": {

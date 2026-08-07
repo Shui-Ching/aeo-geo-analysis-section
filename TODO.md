@@ -9,24 +9,7 @@ AEO/GEO 檢測工具的待辦清單。建立於 2026-08-06。
 
 ## 待辦（1 = 最重要）
 
-### 1. `build:css` 的輸出格式與版控裡的 `main.css` 不一致
-
-- 檔案：`client/package.json:6`（`build:css` 帶 `--style=compressed`）／`client/public/css/main.css`（版控裡是展開格式）
-- 問題：照 README 或 `package.json` 跑 `npm run build:css`，會把整支 CSS 從展開格式改寫成
-  壓縮成一行，產生 700 行以上的無關 diff。真正的樣式改動會被埋在裡面，code review 看不出來。
-  `watch:css` 沒帶 `--style` 所以輸出展開格式，兩支 script 的產物互不相容，交替使用會來回翻攪整個檔案。
-- 修法：二選一——把 `build:css` 的 `--style=compressed` 拿掉（與 `watch:css` 一致，維持現在版控裡的格式），
-  或保留壓縮並把 `client/public/css/main.css` 一次性改成壓縮格式提交。前者的 diff 較乾淨，後者的產物較小。
-  這是取捨不是對錯，需要你決定。
-- 觸發紀錄：2026-08-06 修 HTTP 錯誤頁警示時實際踩到，當次改用
-  `npx sass scss/main.scss:css/main.css --no-source-map` 繞過（該路徑為當時的舊位置，
-  現已改為 `public/css/main.css`）。2026-08-07 做本地字型時第三次繞過（`express.static`
-  收斂那次是第二次），同樣改用 `npx sass`。三次都不敢跑 `npm run build:css`，
-  等於這兩支 script 現在沒有人用，這件事本身就是這一項還沒解的代價。
-- 為什麼排在這裡：不影響工具的任何輸出，但只要有人照 script 跑就一定會踩到，而且修起來只要五分鐘。
-- 估時：5 分鐘（改 script）或 10 分鐘（改格式並重新提交產物）
-
-### 2. HTTP 410 與 404 共用同一段警示文案
+### 1. HTTP 410 與 404 共用同一段警示文案
 
 - 檔案：`client/public/js/main.js` 的 `statusBannerCopy`
 - 問題：410 Gone 的語意是「站方明確表示此資源已永久移除」，目前與 404 共用
@@ -56,6 +39,28 @@ AEO/GEO 檢測工具的待辦清單。建立於 2026-08-06。
 ---
 
 ## 已完成
+
+2026-08-07，`build:css` 的輸出格式與版控裡的 `main.css` 不一致（完成時列為待辦第 1 項）已修正：
+
+- **`build:css` 的 `--style=compressed` 拿掉，與 `watch:css` 一致輸出展開格式**（`client/package.json:6`）
+  這一項原本記為「取捨不是對錯，需要你決定」，決定是**維持版控裡現有的展開格式**，
+  而不是保留壓縮、把產物一次性換成壓縮版提交。
+- **決定的依據是實測出來的數字，不是偏好**：同一份 SCSS 編出來，展開格式 16721 bytes、
+  壓縮格式 13621 bytes，只差 3.1 KB（18.5%），而這點差距在傳輸層 gzip 之後幾乎歸零。
+  用它換掉「每次樣式改動的 diff 都是整行重寫、code review 看不出改了什麼」並不划算。
+- **選壓縮那條路其實比原記載更貴**：`watch:css` 沒帶 `--style`，開發時一存檔就會把檔案翻回展開格式，
+  所以真要走壓縮，`watch:css` 也得一起加上 `--style=compressed`，改的是兩支 script 不是一支。
+  這一點原本沒有寫進待辦，是這次比較兩條路時才確認的。
+- **不需要重新提交產物**：改 script 之前先比對過，版控裡的 `client/public/css/main.css` 與
+  展開格式重新編譯的產物 SHA256 完全相同（`DDB05533CEEE7BEC…`），所以拿掉旗標後
+  `npm run build:css` 產生的是同一批位元組。
+- 驗證：實際跑 `npm run build:css`（**這是三次繞過之後第一次真的跑它**），
+  `git status --porcelain` 裡沒有 `client/public/css/main.css`，即 0 行 diff，
+  同時證明 script 的相對路徑仍然正確。`npm test` → `# pass 97 / # fail 0`（測試數不變——
+  沒有任何測試引用 client 的建置流程，這次跑測試是回歸把關，不是目標）。
+- **未涵蓋的部分**：沒有開瀏覽器目視確認頁面；`main.css` 一個位元組都沒變，所以沒有可看的差異。
+  這次也沒有補 README——這個 repo 目前根本沒有 README，「照 README 跑會踩到」那句描述的是
+  `package.json` 這一條路徑。要不要補 README 是另一件事，未列入待辦。
 
 2026-08-07，冗餘 selector 與重複的類型陣列（完成時列為待辦第 1 項）已清理並驗證輸出未變：
 
@@ -150,9 +155,11 @@ AEO/GEO 檢測工具的待辦清單。建立於 2026-08-06。
   換行轉換不會套用；`git cat-file -s` 的 blob 大小與磁碟位元組數一一相符。
   沒有新增 `.gitattributes`——git 的自動判定在這裡已經正確，多一個檔案沒有意義。
 - **沒有跑 `npm run build:css`**：它帶 `--style=compressed`，會把整支 CSS 壓成一行，
-  56 行的 `@font-face` diff 會被埋進 700 行的格式變動裡，而且等於替待辦裡
-  「`build:css` 的輸出格式」那一項（寫這則時是第 2 項，同日「冗餘 selector」那則完成後為第 1 項）
-  做了本來要你決定的取捨。改用 `npx sass scss/main.scss:public/css/main.css --no-source-map`，
+  56 行的 `@font-face` diff 會被埋進 700 行的格式變動裡，而且等於替
+  「`build:css` 的輸出格式與版控裡的 `main.css` 不一致」那一項做了本來要你決定的取捨
+  （寫這則時它還在待辦清單上，當時是第 2 項，同日「冗餘 selector」那則完成後為第 1 項，
+  最後決定拿掉 `--style=compressed`，見上方該則已完成紀錄）。
+  改用 `npx sass scss/main.scss:public/css/main.css --no-source-map`，
   `git diff --stat` 確認 `main.css` 只有 56 行新增、0 行刪除。
 - 驗證：`npm test` → `# pass 97 / # fail 0`（測試數不變——沒有任何測試引用 client 的字型，
   這次跑測試是回歸把關，不是目標）。
@@ -174,9 +181,10 @@ AEO/GEO 檢測工具的待辦清單。建立於 2026-08-06。
   改成 `public/css/main.css`（相對於 `client/`，不是 repo 根目錄）。只改一支的話兩支會寫到
   不同目錄，其中一支的產物靜默地不再被服務。
   **`--style` 旗標刻意維持原樣**：`build:css` 的 `--style=compressed` 與版控格式不一致是
-  待辦裡「`build:css` 的輸出格式」那一項（寫這則時是第 3 項，同日字型那則完成後為第 2 項，
-  同日「冗餘 selector」那則完成後為第 1 項），
-  需要你決定取捨，不在這次範圍內。也因此驗證時**沒有跑 `npm run build:css`**，
+  「`build:css` 的輸出格式與版控裡的 `main.css` 不一致」那一項，需要你決定取捨，不在這次範圍內
+  （寫這則時它還在待辦清單上，當時是第 3 項，同日字型那則完成後為第 2 項，
+  同日「冗餘 selector」那則完成後為第 1 項，最後決定拿掉 `--style=compressed`，
+  見上方該則已完成紀錄）。也因此驗證時**沒有跑 `npm run build:css`**，
   改用 `npx sass scss/main.scss:public/css/main.css --no-source-map` 重新編譯，
   產物與版控中的 `main.css` 位元組完全相同（`git status` 無 modified），
   同時證明新的相對路徑解析正確。
