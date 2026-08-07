@@ -70,9 +70,13 @@ AEO/GEO 檢測工具的待辦清單。建立於 2026-08-06。
 
 2026-08-07，依賴 Google Fonts（完成時列為待辦第 1 項）已改為本地字型並實測驗證：
 
-- **三支字型改為自架，`index.html` 不再有任何外部請求**（`client/public/fonts/`、
+- **三支字型改為自架，`index.html` 不再對 Google 發出任何請求**（`client/public/fonts/`、
   `client/scss/_fonts.scss`、`client/scss/main.scss`、`client/public/index.html`）
   移除兩條 `preconnect` 與那條 `fonts.googleapis.com` 的 stylesheet，共三個 `<link>`。
+  **這則寫的當下 `index.html` 完全沒有外部請求，但同日稍晚加入了 Umami 分析 script
+  （`cloud.umami.is`），所以「零外部請求」現在已不成立**。字型那一半不受影響：
+  六個 woff2 全部是本地檔案，離線照樣算繪；Umami 的 script 帶 `defer`，
+  抓不到就靜默失敗，畫面不會有任何變化。
   **只移掉 stylesheet 那一條不夠**——`preconnect` 本身就會對 Google 開 TCP／TLS 連線，
   隱私問題原封不動。新增 `client/scss/_fonts.scss` 放六段 `@font-face`，
   在 `main.scss` 以 `@use 'fonts';` 排在第一行（要在 `reset` 之前）。
@@ -111,8 +115,9 @@ AEO/GEO 檢測工具的待辦清單。建立於 2026-08-06。
   雙向確認——六支 `/fonts/*.woff2` 全部回 200、`content-type: font/woff2`、
   `content-length` 與磁碟位元組數相同，且取回的內容前四個位元組是 `wOF2` 魔術數字；
   `/`、`/css/main.css`、`/js/main.js` 仍為 200。
-  另以 grep 確認整個 repo 沒有任何 `googleapis`／`gstatic`／`fonts.google` 字串，
-  `index.html` 與編譯後的 `main.css` 裡唯一剩下的 `https://` 是輸入框的 placeholder 文字。
+  另以 grep 確認整個 repo 沒有任何 `googleapis`／`gstatic`／`fonts.google` 字串（這一條至今成立），
+  當下 `index.html` 與編譯後的 `main.css` 裡唯一剩下的 `https://` 是輸入框的 placeholder 文字
+  （同日稍晚加入的 Umami script 是後來多出來的第二處，見本則第一點）。
 - **`core.autocrlf = true` 會不會弄壞二進位檔**：這台機器開著 autocrlf，已用
   `git diff --cached --numstat` 確認六個 woff2 都被判定為二進位（顯示為 `-`），
   換行轉換不會套用；`git cat-file -s` 的 blob 大小與磁碟位元組數一一相符。
