@@ -20,7 +20,10 @@ function headingLevel(tagName) {
 function analyzeSemanticHtml($) {
   const checks = [];
   const bodyText = getVisibleText($);
-  const scriptCount = $('script[src], script:not([src])').filter((_, el) => !$(el).attr('type') || $(el).attr('type') === 'text/javascript' || $(el).attr('type') === 'module').length;
+  const scriptCount = $('script').filter((_, el) => {
+    const type = $(el).attr('type');
+    return !type || type === 'text/javascript' || type === 'module';
+  }).length;
 
   const looksJsHeavy = bodyText.length < MIN_TEXT_LENGTH_FOR_NON_SPA && scriptCount >= 3;
   checks.push({

@@ -9,18 +9,7 @@ AEO/GEO 檢測工具的待辦清單。建立於 2026-08-06。
 
 ## 待辦（1 = 最重要）
 
-### 1. 冗餘 selector 與重複的類型陣列
-
-- `server/lib/analyzers/semantic-html.js:23`：`$('script[src], script:not([src])')` 等同 `$('script')`，
-  且 filter 內連續呼叫三次 `$(el).attr('type')`。
-- `server/lib/analyzers/content-trust.js:55`：`$('article a[href], main a[href], body a[href]')` 中
-  `body a[href]` 已涵蓋前兩者。
-- `server/lib/analyzers/structured-data.js:74,79`：`['Organization', 'WebSite', 'LocalBusiness']`
-  重複寫兩次；第 79 行為 190 字元的三元運算子。
-- 為什麼排在後面：純可讀性，不影響任何輸出。
-- 估時：20 分鐘
-
-### 2. `build:css` 的輸出格式與版控裡的 `main.css` 不一致
+### 1. `build:css` 的輸出格式與版控裡的 `main.css` 不一致
 
 - 檔案：`client/package.json:6`（`build:css` 帶 `--style=compressed`）／`client/public/css/main.css`（版控裡是展開格式）
 - 問題：照 README 或 `package.json` 跑 `npm run build:css`，會把整支 CSS 從展開格式改寫成
@@ -37,7 +26,7 @@ AEO/GEO 檢測工具的待辦清單。建立於 2026-08-06。
 - 為什麼排在這裡：不影響工具的任何輸出，但只要有人照 script 跑就一定會踩到，而且修起來只要五分鐘。
 - 估時：5 分鐘（改 script）或 10 分鐘（改格式並重新提交產物）
 
-### 3. HTTP 410 與 404 共用同一段警示文案
+### 2. HTTP 410 與 404 共用同一段警示文案
 
 - 檔案：`client/public/js/main.js` 的 `statusBannerCopy`
 - 問題：410 Gone 的語意是「站方明確表示此資源已永久移除」，目前與 404 共用
@@ -67,6 +56,44 @@ AEO/GEO 檢測工具的待辦清單。建立於 2026-08-06。
 ---
 
 ## 已完成
+
+2026-08-07，冗餘 selector 與重複的類型陣列（完成時列為待辦第 1 項）已清理並驗證輸出未變：
+
+- **`$('script[src], script:not([src])')` 收斂為 `$('script')`，filter 內三次 `attr('type')` 改為取一次**
+  （`server/lib/analyzers/semantic-html.js:23`）
+  `[src]` 與 `:not([src])` 的聯集必然涵蓋全部 `script` 且互不重疊，所以集合相等。
+  **刻意沒有順手 `trim()` 或轉小寫**：目前 `type=" module "` 與 `type="TEXT/JAVASCRIPT"` 都不算數，
+  加了正規化會讓這兩種寫法開始被計入 `scriptCount`，那是行為變更不是清理。
+  `!type` 同時涵蓋沒有 type 屬性與 `type=""` 兩種情形，與修改前一致。
+- **`$('article a[href], main a[href], body a[href]')` 收斂為 `$('body a[href]')`**
+  （`server/lib/analyzers/content-trust.js:55`）
+  **這一項是「純可讀性」還是「輸出變了」的分水嶺，取決於 cheerio 的逗號 selector 會不會去重**：
+  若不去重，巢狀在 `<main><article>` 裡的連結目前會被算三次，「偵測到 N 個外部連結」一直是灌水的，
+  收斂就等於改動使用者看得到的數字。**已實測確認會去重**——用
+  `<body><main><article>` 三層巢狀的 fixture 量測，`$('article a[href], main a[href], body a[href]').length`
+  與 `$('body a[href]').length` 都是 5。所以這是可讀性改動，外部連結數沒有變。
+  **沒有再往下收成 `$('a[href]')`**：雖然本次 fixture 裡兩者結果相同（HTML 解析器會把 `<head>` 內的
+  `<a>` 搬進 body），但那要仰賴解析器行為，`body a[href]` 的意圖也更明確。
+- **`['Organization', 'WebSite', 'LocalBusiness']` 抽成 `ORGANIZATION_TYPES` 常數，命中結果只算一次**
+  （`server/lib/analyzers/structured-data.js`）
+  `hasOrgOrSite` 改為 `orgTypesFound`，`status` 與 `evidence` 都由它推得，190 字元那行降到 120 餘字元，
+  結構也與下面 `contentTypesFound` 那段對稱。
+  **刻意沒有替 org 那一欄補上 `[...new Set()]`**：下面的內容型別欄有去重、org 欄沒有，
+  所以頁面若有兩個 `Organization` 節點，evidence 目前會顯示「Organization, Organization」。
+  這看起來像是該一起修好，正因為如此才不能順手改——那會變更輸出，屬於另一件事。
+  要不要統一去重是可以後續再決定的提案，未列入待辦。
+- **驗收標準是「修改前後的完整輸出逐位元組相同」，不是「測試還是綠的」**：寫了一支等價性腳本
+  （九個 fixture：script 的 src／type 各種組合含大小寫與前後空白、三層巢狀的 anchor、
+  `article` 與 `main` 並存但不巢狀、完全沒有 `article`／`main`、`<head>` 裡放 anchor、
+  重複 `Organization`、`@graph` 與多重 `@type`、無組織型別、JSON 解析失敗、全空白頁），
+  對三支 analyzer 的完整回傳值輸出 JSON。修改前後兩份 JSON `diff` 完全相同。
+  **另跑負向對照確認這批 fixture 有鑑別力**（否則「相同」不代表什麼）：同一份 fixture 下，
+  若誤加 `trim().toLowerCase()`，script 數會從 2 變成 4；若誤把選擇器縮成 `article a[href]`，
+  連結數會從 3 變成 2。兩種錯誤都會被這批 fixture 抓到。
+- 驗證：`npm test` → `# pass 97 / # fail 0`（測試數不變）。
+- **未涵蓋的部分**：沒有為 `semantic-html.js` 與 `content-trust.js` 新增常設測試——這兩支目前
+  在 `server/test/` 裡沒有對應的測試檔，等價性腳本是一次性的，跑完就丟。補這兩支的測試覆蓋
+  是獨立的一件事，不在這次範圍內，也未列入待辦。
 
 2026-08-07，依賴 Google Fonts（完成時列為待辦第 1 項）已改為本地字型並實測驗證：
 
@@ -146,7 +173,8 @@ AEO/GEO 檢測工具的待辦清單。建立於 2026-08-06。
   改成 `public/css/main.css`（相對於 `client/`，不是 repo 根目錄）。只改一支的話兩支會寫到
   不同目錄，其中一支的產物靜默地不再被服務。
   **`--style` 旗標刻意維持原樣**：`build:css` 的 `--style=compressed` 與版控格式不一致是
-  待辦裡「`build:css` 的輸出格式」那一項（寫這則時是第 3 項，2026-08-07 之後為第 2 項），
+  待辦裡「`build:css` 的輸出格式」那一項（寫這則時是第 3 項，同日字型那則完成後為第 2 項，
+  同日「冗餘 selector」那則完成後為第 1 項），
   需要你決定取捨，不在這次範圍內。也因此驗證時**沒有跑 `npm run build:css`**，
   改用 `npx sass scss/main.scss:public/css/main.css --no-source-map` 重新編譯，
   產物與版控中的 `main.css` 位元組完全相同（`git status` 無 modified），

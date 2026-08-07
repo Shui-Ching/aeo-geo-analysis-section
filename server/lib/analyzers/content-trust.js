@@ -52,7 +52,7 @@ function analyzeContentTrust($, { finalUrl, structuredDataNodes }) {
     why: '圖片的文字描述是 AI 引擎理解非文字內容的主要方式。',
   });
 
-  const bodyLinks = $('article a[href], main a[href], body a[href]').toArray();
+  const bodyLinks = $('body a[href]').toArray();
   const currentHost = safeHostname(finalUrl);
   const externalLinks = bodyLinks.filter((el) => {
     const href = $(el).attr('href');

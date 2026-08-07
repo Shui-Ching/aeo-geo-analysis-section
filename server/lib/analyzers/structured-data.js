@@ -1,6 +1,7 @@
 'use strict';
 
 const CONTENT_TYPES = ['Article', 'BlogPosting', 'NewsArticle', 'FAQPage', 'HowTo', 'Product', 'Recipe', 'Review'];
+const ORGANIZATION_TYPES = ['Organization', 'WebSite', 'LocalBusiness'];
 
 function flattenJsonLd(parsed) {
   // JSON-LD 可能是單一物件、陣列,或帶 @graph 的容器,統一攤平成物件陣列方便後續檢查
@@ -71,12 +72,12 @@ function analyzeStructuredData($) {
 
   const allTypes = parsedNodes.flatMap(getTypes);
 
-  const hasOrgOrSite = allTypes.some((t) => ['Organization', 'WebSite', 'LocalBusiness'].includes(t));
+  const orgTypesFound = allTypes.filter((t) => ORGANIZATION_TYPES.includes(t));
   findings.checks.push({
     id: 'jsonld-organization',
     label: '網站/組織基本資料(Organization / WebSite)',
-    status: hasOrgOrSite ? 'pass' : 'warn',
-    evidence: hasOrgOrSite ? `偵測到類型: ${allTypes.filter((t) => ['Organization', 'WebSite', 'LocalBusiness'].includes(t)).join(', ')}` : '未偵測到 Organization / WebSite / LocalBusiness',
+    status: orgTypesFound.length > 0 ? 'pass' : 'warn',
+    evidence: orgTypesFound.length > 0 ? `偵測到類型: ${orgTypesFound.join(', ')}` : '未偵測到 Organization / WebSite / LocalBusiness',
     why: '讓 AI 引擎能明確辨識內容出處與品牌實體,是被引用時標註來源的基礎。',
   });
 
