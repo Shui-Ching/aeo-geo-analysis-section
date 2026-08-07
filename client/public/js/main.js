@@ -1025,16 +1025,16 @@ function docCompareSection(doc, diff) {
         const changes = diff.checks.filter((change) => change.kind === kind);
         if (changes.length === 0) continue;
         section.append(docEl(doc, 'h3', 'doc-group-title', `${title}(${changes.length})`));
-        const rows = changes.map((change) => {
-            const tr = [
-                change.categoryLabel,
-                change.label,
-                { text: '', className: null },
-                { text: change.evidenceTo || change.evidenceFrom || '', className: 'doc-cell-mono' },
-            ];
-            return tr;
-        });
-        const table = docTable(doc, ['分類', '檢查項', '狀態變化', '本次判定依據'], rows);
+        // 上次與本次的判定依據分成兩欄。合成一欄再用 || 取值的話,
+        // 「本次消失的檢查項」只有上次的依據,會被放到寫著「本次」的欄位底下變成錯誤標示。
+        const rows = changes.map((change) => [
+            change.categoryLabel,
+            change.label,
+            { text: '', className: null },
+            { text: change.evidenceFrom || '', className: 'doc-cell-mono' },
+            { text: change.evidenceTo || '', className: 'doc-cell-mono' },
+        ]);
+        const table = docTable(doc, ['分類', '檢查項', '狀態變化', '上次判定依據', '本次判定依據'], rows);
         // 狀態變化那一格要放兩顆有顏色的標籤,不是純文字,所以表格建好之後再填。
         const bodyRows = table.querySelectorAll('tbody tr');
         changes.forEach((change, index) => {
