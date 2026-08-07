@@ -420,7 +420,8 @@ AEO/GEO 檢測工具的待辦清單。建立於 2026-08-06。
   驗證：本機測試 server 回 302，確認兩跳都進入 SSRF 檢查。
 - **`resolvedIp` 宣稱有 DNS rebinding 防護但無任何呼叫端使用**（`server/lib/ssrf-guard.js`）
   移除該回傳值，並把 TOCTOU 限制誠實寫進 JSDoc。**這是移除誤導、不是修好漏洞**，
-  實際防護見上方待辦第 2 項。
+  實際防護見上方「DNS rebinding（TOCTOU）完整防護」那則已完成紀錄
+  （寫這則時它還在待辦清單上，當時是第 2 項，同日稍晚完成）。
 - **輔助檔案的 body 無大小上限**（`server/lib/fetch-page.js`）
   `readBodyWithLimit` 改為接受 `maxBytes`：HTML 5MB、robots.txt / llms.txt 512KB。
   驗證：4MB 回應被中止，heapUsed 停在 8MB。
