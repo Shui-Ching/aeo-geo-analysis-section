@@ -19,6 +19,15 @@ AEO/GEO 檢測工具的待辦清單。建立於 2026-08-06。
 2026-08-07 最後一項（HTTP 410 與 404 共用同一段警示文案）完成後，這份清單建立時列出的
 項目已全部處理完畢，見下方「已完成」。**下面五項來自 2026-08-10 對公開部署後現況的重新檢視。**
 
+**2026-08-10 執行進度**：五項的程式碼全部寫完並各自 commit（`ef7aaaa`、`5daef5e`、
+`790d5ca`、`eeb2046`、`965a533`），但**尚未 push，所以線上還是舊版**——推上 `main`
+會觸發 Render 自動部署，那是對外的動作，留給你決定時機。
+
+第 1、2 項已完整結案，移到下方「已完成」。**第 3、4、5 項留在這裡**，因為它們的驗收
+條件需要瀏覽器、螢幕閱讀器、休眠的線上實例或 1–2 天的觀察窗，全部只有你做得到；
+各項下方改寫成「程式碼已完成 / 驗收未完成」，剩下要做什麼寫在該項的「待你驗收」段落。
+編號維持原本的 3、4、5 沒有重排，方便對照 commit 訊息。
+
 **編號是執行順序，不是重要性順序**，與本檔開頭的排序基準刻意不同，原因有三個：
 第 1 項可能零成本結案，先做它有機會讓後面少一件事；第 2、3 項改完立刻看得到結果；
 第 4、5 項的驗收都要等（實例休眠 15 分鐘、CSP 觀察 1–2 天），放後面不會卡住其他進度。
@@ -35,72 +44,11 @@ AEO/GEO 檢測工具的待辦清單。建立於 2026-08-06。
 
 ---
 
-### 1. 確認 `TRUST_PROXY_HOPS` 是否正確設定（5 分鐘，可能零程式碼改動）
-
-`server/index.js:23` 是 `Number(process.env.TRUST_PROXY_HOPS) || 0`，而 `render.yaml` 把它宣告成
-`sync: false`——值只存在 Render 儀表板，從 repo 讀不到。**若未設定或為 0，`req.ip` 拿到的是
-Render 反向代理的位址，所有訪客會被算進同一個桶，全站每分鐘只能掃 10 次。**
-這正是 `index.js:17-22` 註解裡「設太低」那個方向的後果：可用性問題，而且在單人測試時完全看不出來。
-
-`|| 0` 另有一個副作用：打錯的值會被靜默吃成 0，而 0 在部署當下看起來一切正常。
-
-修法步驟：
-
-1. Render 儀表板 → 該服務 → Environment，看 `TRUST_PROXY_HOPS` 存不存在、值是多少。
-   不存在或為 0 就直接確定有問題，跳到第 3 步。
-2. 已有值就實測：用筆電對線上網址**在 60 秒內**連送 11 次掃描（固定視窗會重置，慢了測不準），
-   第 11 次應回 429；接著**立刻**用手機切行動網路送 1 次。手機也 429 代表額度共用、設定錯誤；
-   手機正常出報告代表設定正確，本項結案。
-3. 需要修就把值設成 `1`，**儲存後必須重新部署才會生效**（環境變數不會熱套用），回第 2 步重測。
-   仍然共用就往上加到 `2`，一次加一階——不要直接填大的數字，理由見 `index.js:17-22`。
-
-**驗收條件**：兩個不同公網 IP 各自擁有獨立的 10 次額度。
-**Commit**：無程式碼改動，不需要 commit。
+（第 1、2 項已完成，紀錄移到下方「已完成」。）
 
 ---
 
-### 2. 首頁補上 JSON-LD、canonical 與 Open Graph（20 分鐘）
-
-**這個工具用自己的標準掃自己，目前大約只有 50 分。** 依三支 analyzer 的邏輯對
-`client/public/index.html` 逐項推算：結構化資料 0 分（完全沒有 `ld+json`，走
-`structured-data.js:27` 的提早返回分支，唯一適用項目直接 fail）、語意化內容結構 100 分
-（title 13 字、meta description 64 字、單一 h1、有表格，六項全 pass）、內容可信度訊號 50 分
-（沒有 canonical → warn；沒有 `<img>`、沒有任何 `<a>`、沒有作者與日期 → 其餘四項全 na）。
-三類等權重平均得 50。
-
-**一個 AEO 評分工具在自己的評分表上拿 50 分，是可信度問題而不只是分數問題。**
-修法只動 `<head>`，不碰 JS 也不碰 SCSS，所以**這一項不需要更新 `?v=` 版本號**。
-
-修法步驟：
-
-1. 確定正式對外網址。Render 服務名是 `aeo-geo-analysis-section`，預設網址應是
-   `https://aeo-geo-analysis-section.onrender.com`，**但請以儀表板實際顯示的為準**。
-   之後若綁自訂網域，canonical 與 `og:url` 都要跟著改。
-2. 加 `<link rel="canonical" href="<正式網址>/" />`。
-3. 加一段 `<script type="application/ld+json">`，用 `@graph` 同時放 `WebSite` 與 `WebApplication`。
-   **`WebSite` 是關鍵**——`structured-data.js:4` 的 `ORGANIZATION_TYPES` 只認
-   `Organization` / `WebSite` / `LocalBusiness`，只寫 `WebApplication` 那一項仍是 warn。
-4. 加 Open Graph：`og:title`、`og:description`、`og:type="website"`、`og:url`、
-   `twitter:card="summary_large_image"`。
-5. **`og:image` 需要一張 1200×630 的圖，目前沒有。** 決定要嘛先跳過（社群分享沒有預覽圖，
-   不影響分數），要嘛另外花時間做一張。這一項未決。
-
-**驗收條件**：用工具掃自己的正式網址，總分從 50 變成 **94**（結構化資料 83、
-語意化內容結構 100、內容可信度訊號 100）。
-
-**這組數字是照 analyzer 邏輯推算的，不是實際掃過。** 若掃出來不是 94，差異本身就是有用的資訊。
-83 的來源：`WebApplication` 不在 `structured-data.js:3` 的 `CONTENT_TYPES` 名單裡，
-內容型別那一項仍是 warn，`(1 + 1 + 0.5) / 3`。
-
-**不要為了補滿那 6 分去加假的 `FAQPage`**：頁面上沒有 FAQ 就不該宣告有。首頁自己寫著
-「每一項檢查都附上判定依據，而不是只給一個數字」，為衝分數宣告不存在的結構化資料，
-正是這個工具存在的目的要勸阻的行為。94 是誠實的天花板。
-
-**Commit**：`feat: 首頁補上 JSON-LD、canonical 與 Open Graph 標籤`
-
----
-
-### 3. 分類卡片改用 button，補鍵盤操作與 aria（1 小時）
+### 3. 分類卡片改用 button，補鍵盤操作與 aria（程式碼已完成，驗收未完成）
 
 `client/public/js/main.js:296` 把 click 事件掛在一個 `<div>` 上，沒有 `tabindex`、
 沒有 `role`、沒有 `aria-expanded`；而 `main.js:262` 只給 `index === 0` 加 `is-open`。
@@ -146,21 +94,50 @@ Render 反向代理的位址，所有訪客會被算進同一個桶，全站每�
    **那個沒用到的 `next` 參數留著不要動**——Express 4 靠參數個數辨識錯誤處理器，
    拿掉會讓整層錯誤處理靜默退化成普通中介層。
 
-**驗收條件**：
+**已完成的實作**（commit `5daef5e` 與 `790d5ca`，2026-08-10）：
 
-- 只用鍵盤：`Tab` 走到三張卡片，`Enter` 或 `Space` 都能展開，**三個分類全部可達**。
-- DevTools 確認 `aria-expanded` 隨展開收合切換 `true` / `false`。
-- 開 NVDA 掃一次，確認掃描完成有播報。**這一步沒做就誠實記成「未驗證」，不要寫成做完了。**
-- 對 `/api/analyze` 送壞掉的 JSON body（例如 `{"url":`），確認回 **400** 而不是 500，
-  且伺服器 log 沒有把它記成 `console.error` 的伺服器故障。
+- 結構照上述 accordion 模式改完，`?v=` 更新為 `20260810`（favicon 那條沒動，圖沒變）。
+- **第 3 步比原本寫的多做了一件事**：`_base.scss` 有一條 `h1, h2, h3` 的全域規則
+  （Fraunces、`font-weight: 600`、`line-height: 1.15`、`letter-spacing: -0.01em`）。
+  改動前那個 `h3` 只包住標題文字，改動後它把 count 與 score 一起包進去了，
+  所以新的 `.category-card-heading-wrap` 必須寫 `font: inherit` **加上**
+  `letter-spacing: normal`（`font` 簡寫不含 letter-spacing），否則襯線字與負字距
+  會外溢到分數與計數；原本靠全域規則拿到的四項標題樣式，也要逐項改寫在
+  `.category-card-title` 這個 `span` 上。**原待辦寫的「h3 外層通常不需額外樣式」是錯的。**
+- **第 6 步沒有照原文做，改用更保險的做法**：`#scan-status` 是一個有 padding、邊框與
+  掃描線動畫的面板，不可能「永遠不 hidden」；而它最重要的一則訊息其實是「掃描完成」，
+  偏偏那一刻它正被隱藏，role 加在它身上永遠播不到。改成在 `index.html` 新增兩個
+  **永遠存在、永遠不 hidden** 的 sr-only 元素（`#sr-status` 是 `role="status"`、
+  `#sr-alert` 是 `role="alert"`），由 `main.js` 的 `announce()` 與 `showError()` 寫入。
+  視覺元素維持原本的 hidden 行為，一個位元組都沒動。
+- 第 7 步的錯誤中介層另外做了兩件原文沒寫的事：`console.error` 只留給 5xx（4xx 改用
+  `console.warn`），以及 4xx 的回應訊息固定為中文「請求格式錯誤」而不是 `err.message`
+  ——body-parser 的原文是英文的解析器內部訊息，放進中文介面既突兀也洩漏實作細節。
 
-**Commit 拆兩個**：
-`fix: 分類卡片改用 button，補上鍵盤操作與 aria-expanded`
-`fix: 錯誤處理中介層尊重 err.status，格式錯誤的 request body 回 400`
+**我驗證過的**：
+
+- vm 沙箱加 DOM stub 的一次性腳本（沿用 2026-08-06／08-07 那兩則的手法），三張卡片
+  逐一確認 `h3` → `button` → `span` 結構、button 內沒有任何標題元素（內容模型合法）、
+  `aria-expanded` 初始值 `true`／`false`／`false`、點擊一次 class 與 aria 同步反轉、
+  再點一次回到初始值，39 項全過。
+- `npm run build:css` 後 `git diff` 確認 `main.css` 只有預期的 11 行新增、1 行刪除。
+- 實際啟動 server（PORT=3126）送壞掉的 JSON body：回 **400** 與
+  `{"error":"請求格式錯誤"}`，log 是 `console.warn` 的
+  `[POST /api/analyze] 400: Unexpected end of JSON input`，不是 `console.error`。
+- `npm test` → `# pass 97 / # fail 0`。
+
+**待你驗收**（需要瀏覽器與螢幕閱讀器，我做不到）：
+
+1. 只用鍵盤：`Tab` 走到三張卡片，`Enter` 或 `Space` 都能展開，**三個分類全部可達**。
+2. DevTools 確認 `aria-expanded` 隨展開收合切換（腳本已驗過邏輯，這一步驗的是真實瀏覽器）。
+3. 開 NVDA 掃一次，確認「掃描完成，總分 XX 分」有播報，錯誤訊息也有播報。
+   **這一步沒做就誠實記成「未驗證」。**
+4. 目視確認分類卡片標題的字體與字距和改動前一樣（上面那條字體外溢的坑是讀 CSS
+   規則推出來並補掉的，**沒有開瀏覽器看過**）。
 
 ---
 
-### 4. 前端錯誤處理與冷啟動提示（40 分鐘寫 + 20 分鐘等待驗收）
+### 4. 前端錯誤處理與冷啟動提示（程式碼已完成，驗收未完成）
 
 **這五項裡唯一的真 bug。** `client/public/js/main.js:44-49` 在檢查 `response.ok` 之前就
 `await response.json()`。當回應不是 JSON 時——Render free plan 冷啟動期間的 502／504 錯誤頁
@@ -186,16 +163,40 @@ Render 反向代理的位址，所有訪客會被算進同一個桶，全站每�
    否則掃描結束了提示還會跳出來。
 5. **更新 `?v=` 版本號。**
 
-**驗收條件**（這一項是唯一需要等待的）：讓實例閒置滿 15 分鐘進入休眠（或在 Render 儀表板
-手動 restart），然後掃一次，確認三件事——第 5 秒出現喚醒提示、最終成功出報告、
-**而不是顯示那句錯誤的「無法連線到分析伺服器」**。順便記下實際冷啟動秒數。
-另外用 DevTools 切 Offline 再送一次，確認錯誤訊息合理。
+**已完成的實作**（commit `eeb2046`，2026-08-10）：五個步驟全部照原文做完。
+非 2xx 的文案抽成 `readErrorMessage()`；逾時與喚醒提示的秒數抽成
+`REQUEST_TIMEOUT_MS`／`WAKE_HINT_DELAY_MS` 兩個常數放檔案開頭，方便量到實際冷啟動
+秒數之後回頭調。喚醒提示同時寫進第 3 項新增的 `#sr-status`，螢幕閱讀器也聽得到。
+`?v=` 沿用第 3 項已經改好的 `20260810`，沒有再動一次。
 
-**Commit**：`fix: 先判斷 response.ok 再解析 JSON，並加上逾時與冷啟動提示`
+**我驗證過的**（vm 沙箱加 DOM stub 的一次性腳本，17 項全過）：
+
+- 502 回 HTML 錯誤頁時顯示「伺服器正在啟動或暫時無法回應…」，
+  **確認不再誤報成「無法連線到分析伺服器」**——這是這一項的核心。503、504 走同一分支。
+- 後端自己回的 JSON 錯誤（例如 400 的 SSRF 通用訊息）仍原樣沿用 `data.error`。
+- 非 JSON 的 404 帶出「掃描失敗(HTTP 404)」；標了 `application/json` 卻解析失敗時
+  會退回狀態碼分支，不會炸到外層 catch。
+- `AbortError` 有自己的逾時文案，真正的網路失敗才顯示「無法連線」。
+- `fetch` 確實帶了 `AbortSignal`，送出當下 `aborted` 為 false。
+- 5.6 秒的慢回應會把狀態文字換成喚醒提示；快回應結束後再等 6 秒，
+  提示**沒有**跳出來（`clearTimeout` 有效）。
+- 另用本機 server 對 `https://example.com` 掃出的**真實 API 回應**走完 `renderReport`，
+  成功路徑 8 項全過（三張卡片、18 列爬蟲表、分數 50、完成播報、快照寫入 localStorage），
+  確認調換順序沒有弄壞 happy path。
+- `npm test` → `# pass 97 / # fail 0`。
+
+**待你驗收**（需要休眠中的線上實例，我做不到）：
+
+1. 讓實例閒置滿 15 分鐘進入休眠（或在 Render 儀表板手動 restart），然後掃一次，
+   確認第 5 秒出現喚醒提示、最終成功出報告，**而不是那句錯誤的「無法連線到分析伺服器」**。
+2. **記下實際冷啟動秒數**——90 秒這個逾時值裡的 30–60 秒是業界回報值，本站未實測。
+   量到之後可以回頭調 `REQUEST_TIMEOUT_MS`。
+3. 用 DevTools 切 Offline 再送一次，確認顯示的是「無法連線到分析伺服器，請確認網路
+   連線後再試一次」。
 
 ---
 
-### 5. 加上 Content-Security-Policy（30 分鐘寫 + 觀察 1–2 天 + 10 分鐘切正式）
+### 5. 加上 Content-Security-Policy（Report-Only 已完成，觀察與切正式未完成）
 
 放最後是刻意的：第 2 項加了 JSON-LD、第 3、4 項改了 JS，先讓頁面定型再寫政策，不用改兩次。
 
@@ -229,7 +230,7 @@ Render 反向代理的位址，所有訪客會被算進同一個桶，全站每�
    只寫前者會讓統計靜默歸零。
 2. **第一次部署一律用 `Content-Security-Policy-Report-Only` 標頭**，不要直接上正式的。
    Report-Only 只在 Console 報告違規、不真的擋，壞掉也不影響使用者。
-3. 觀察 1–2 天，逐項確認四件事：
+3. 觀察 1–2 天，逐項確認**五**件事（比原本多一項，理由見第五點）：
    - Chrome DevTools Console 零 CSP violation。
    - **第 2 項加的那段 JSON-LD 有沒有被回報違規。** 理論上 `<script type="application/ld+json">`
      是 data block、不會被 `script-src` 攔，但**這一點未實測，是這份政策裡最需要親眼確認的一項**。
@@ -237,12 +238,24 @@ Render 反向代理的位址，所有訪客會被算進同一個桶，全站每�
    - **Umami 後台看得到新的訪問資料。** 這是最容易靜默壞掉的地方，一定要看後台，
      不要只看 Console 沒紅字就當作沒事。
    - 下載報表功能正常（`blob:` URL 的下載）。
-4. 都乾淨了就把標頭名稱從 `Content-Security-Policy-Report-Only` 改成 `Content-Security-Policy`，
-   重新部署，再走一次上面四項確認。
+   - **分數圓環與長條的動畫正常，且 Console 沒有 `style-src` 違規。**（2026-08-10 補上這一項）
+     那兩個動畫是用 CSSOM 寫的（`main.js` 的 `fillEl.style.strokeDashoffset`、`fill.style.width`）。
+     依 CSP 規範，`style-src` 管的是 `<style>` 元素與 markup 裡的 `style` 屬性，
+     CSSOM 寫入不在管轄範圍內——**但這一點和 JSON-LD 那一點一樣是讀規範推得的，未實測**。
+     真的被擋就補 `style-src-attr`，或改成切換 class、用 CSS 變數帶值。
+
+**第 1、2 步已完成**（commit `965a533`，2026-08-10）：中介層放在 `express.static` 之前，
+政策內容與上面的草案逐字相同，標頭名稱是 `Content-Security-Policy-Report-Only`。
+**我驗證過的**：實際啟動 server（PORT=3128），首頁與 `/css/main.css` 的回應都帶有
+Report-Only 標頭，且**沒有**下正式的強制標頭；`npm test` → `# pass 97 / # fail 0`。
+**未驗證**：沒有開瀏覽器看過 Console，上面那五項觀察全部還沒做。
+
+**第 4 步尚未開始**：都乾淨了就把標頭名稱從 `Content-Security-Policy-Report-Only`
+改成 `Content-Security-Policy`，重新部署，再走一次上面五項確認。
 
 **Commit 拆兩個**：
-`feat: 加上 Content-Security-Policy，先以 Report-Only 觀察`
-`feat: CSP 從 Report-Only 切換為正式強制`
+`feat: 加上 Content-Security-Policy，先以 Report-Only 觀察`（已完成，`965a533`）
+`feat: CSP 從 Report-Only 切換為正式強制`（待觀察窗結束後再做）
 
 ---
 
@@ -289,12 +302,58 @@ SSRF 掃描器與流量放大器。原本排在這一節的三項——DNS rebin
   這一項會立刻變成真問題**，屆時額度等於乘以實例數，要改成共用的計數存放（例如 Redis）。
   現在不做。
 
-部署後新發現、與公開身分直接相關的兩項已列入待辦：`TRUST_PROXY_HOPS` 的設定確認（第 1 項，
-沒設對的話速率限制會變成全站共用一份額度）與 CSP（第 5 項，公開站 + 第三方 Umami script）。
+部署後新發現、與公開身分直接相關的兩項原本列為待辦第 1 項與第 5 項：`TRUST_PROXY_HOPS`
+的設定確認（沒設對的話速率限制會變成全站共用一份額度）與 CSP（公開站 + 第三方 Umami script）。
+2026-08-10 的執行結果——前者確認儀表板上的值是 `1`，雙 IP 實測未做，紀錄移到「已完成」；
+後者的 Report-Only 已上，觀察與切正式仍留在待辦第 5 項。
 
 ---
 
 ## 已完成
+
+2026-08-10，首頁補上 JSON-LD、canonical 與 Open Graph（完成時列為待辦第 2 項）已完成並實測驗證：
+
+- **正式網址是實測確認的，不是照服務名推的**：`curl` 打
+  `https://aeo-geo-analysis-section.onrender.com/` 回 200 且內容就是本站的
+  `index.html`（`<title>AEO/GEO 訊號掃描器</title>`），canonical 與 `og:url` 都用這個。
+  日後若綁自訂網域，這兩處要一起改。
+- **基準分數是實測的 50，不是推算的 50**：對線上網址打一次 `/api/analyze`，
+  `overallScore = 50`，三類分別是結構化資料 0、語意化內容結構 100、內容可信度訊號 50，
+  與原待辦逐項推算的完全相同。
+- **改完之後的 94 也是實測的**：寫了一支一次性腳本，把修改後的 `client/public/index.html`
+  丟進 `cheerio.load()` 再跑三支 analyzer 與 `buildScoreSummary`，得到
+  `overallScore = 94`（結構化資料 83、語意化 100、可信度 100），與推算相符。
+  逐項輸出也對得上：JSON-LD 找到 1 個可解析區塊（pass）、偵測到 `WebSite`（pass）、
+  內容型別仍是 warn（`WebApplication` 不在 `CONTENT_TYPES` 名單裡），
+  可信度那五項是 canonical pass、其餘四項維持 na。
+- **`og:image` 決定先跳過**：需要一張 1200×630 的圖，目前沒有。缺這張圖只影響社群分享
+  的預覽外觀，**對任何檢測項目的判定都沒有影響**（已由上面的 94 分證實）。
+  這一點寫進了 `<head>` 的註解，避免日後有人以為是漏掉的。
+- **刻意沒有宣告 `FAQPage`、`author` 或 `datePublished`**：頁面上沒有 FAQ、沒有署名、
+  沒有發布日期。特別注意 `content-trust.js:16` 與 `:32` 會直接讀 JSON-LD 節點的
+  `author` 與 `datePublished` 欄位，隨手加上去就會讓那兩項從 na 變成 pass ——
+  分數不會變（na 本來就不計分），但那會是宣告不存在的東西，正是這個工具要勸阻的行為。
+  94 是誠實的天花板。
+- **只動 `<head>`，沒有動 JS 與 SCSS，所以沒有更新 `?v=` 版本號**（版本號後來因為
+  第 3 項才改成 `20260810`）。
+- 驗證：`npm test` → `# pass 97 / # fail 0`（測試數不變——沒有任何測試引用
+  `client/public/index.html`，這次跑測試是回歸把關，不是目標）。
+- **未涵蓋的部分**：沒有開瀏覽器目視確認，也沒有用 Facebook／Twitter 的分享偵錯工具
+  實際看過 Open Graph 的算繪結果。上面的 94 分是對**本機檔案**跑 analyzer 得到的，
+  推上線之後應該對線上網址再掃一次確認一致（要等 push 與部署）。
+
+2026-08-10，`TRUST_PROXY_HOPS` 的設定確認（完成時列為待辦第 1 項）——**第 1 步已確認，
+第 2 步的實測還沒做**：
+
+- Render 儀表板的 Environment 頁面顯示 `TRUST_PROXY_HOPS` **存在，值是 `1`**
+  （由截圖確認）。所以原待辦擔心的「未設定或為 0，全站共用一份額度」這個最壞情況不成立。
+- **但這還不等於設定正確**。層數對不對取決於 Render 實際加了幾層代理，只有雙 IP 實測
+  才證明得了：用筆電對線上網址**在 60 秒內**連送 11 次掃描（固定視窗會重置，慢了測不準），
+  第 11 次應回 429；接著**立刻**用手機切行動網路送 1 次——手機也 429 代表額度共用、
+  設定錯誤（要往上加到 `2`，一次加一階）；手機正常出報告代表設定正確。
+- **這一步沒有做，因為需要第二個公網 IP。** 驗收條件（兩個不同公網 IP 各自擁有獨立的
+  10 次額度）目前是**未驗證**狀態。
+- 無程式碼改動，沒有 commit。
 
 2026-08-07，HTTP 410 與 404 共用同一段警示文案（完成時列為待辦第 1 項）已拆開並實測驗證：
 
