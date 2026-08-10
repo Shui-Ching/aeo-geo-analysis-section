@@ -7,6 +7,13 @@
 
 const STATUS_LABEL = { pass: '通過', warn: '警告', fail: '未通過', na: '不適用' };
 
+// 逾時 90 秒 = 後端最壞情況約 20 秒(HTML 抓取 10 秒,robots.txt 與 llms.txt
+// 並行的 10 秒)加上休眠實例冷啟動的 30–60 秒,兩者相加取保守值。
+// 冷啟動那個數字是業界普遍回報值,尚未在本站實測。
+const REQUEST_TIMEOUT_MS = 90000;
+// 5 秒還沒回來就提示可能在喚醒。正常掃描約 2–5 秒,設得更短會讓每次掃描都跳提示。
+const WAKE_HINT_DELAY_MS = 5000;
+
 const form = document.getElementById('scan-form');
 const urlInput = document.getElementById('url-input');
 const scanButton = document.getElementById('scan-button');
@@ -39,18 +46,34 @@ form.addEventListener('submit', async (event) => {
     scanButton.disabled = true;
     announce(`正在抓取並分析 ${url}`);
 
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+    // 伺服器在 free plan 上閒置 15 分鐘會休眠,第一次掃描要先等它醒過來。
+    // 這段等待期間畫面上只有「正在抓取並分析」在轉,使用者無從判斷是慢還是壞了。
+    const wakeHintId = setTimeout(() => {
+        const hint = '伺服器可能正在從休眠中喚醒,第一次掃描約需 30–60 秒,請稍候';
+        statusText.textContent = hint;
+        announce(hint);
+    }, WAKE_HINT_DELAY_MS);
+
     try {
         const response = await fetch('/api/analyze', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ url }),
+            signal: controller.signal,
         });
-        const data = await response.json();
 
+        // 一定要先判 response.ok 再解析 JSON,順序不能反過來:
+        // 回應不是 JSON 的時候(Render 冷啟動期間的 502 / 504 錯誤頁就是 HTML),
+        // 提早呼叫 response.json() 會拋錯並落進外層 catch,畫面顯示「無法連線到
+        // 分析伺服器」—— 那句話是錯的,伺服器明明回應了,而且使用者無法據以行動。
         if (!response.ok) {
-            showError(data.error || '掃描失敗,請確認網址是否正確');
+            showError(await readErrorMessage(response));
             return;
         }
+
+        const data = await response.json();
 
         // 先讀出上一次的快照,再存入這一次 —— 順序反過來的話,
         // 比較基準會變成「本次自己」,差異永遠是零。
@@ -62,12 +85,42 @@ form.addEventListener('submit', async (event) => {
         // 還停在輸入框,不主動播報的話使用者不會知道結果已經出來了。
         announce(`掃描完成,總分 ${data.overallScore} 分,報告已顯示在下方`);
     } catch (err) {
-        showError('無法連線到分析伺服器');
+        if (err.name === 'AbortError') {
+            showError(`等待超過 ${REQUEST_TIMEOUT_MS / 1000} 秒仍無回應,伺服器可能正忙或已停止服務,請稍後再試一次`);
+        } else {
+            showError('無法連線到分析伺服器,請確認網路連線後再試一次');
+        }
     } finally {
+        // 兩個計時器都必須清掉:逾時計時器留著會在下一次掃描途中誤觸 abort,
+        // 喚醒提示留著則會在報告都出來之後才跳出來。
+        clearTimeout(timeoutId);
+        clearTimeout(wakeHintId);
         statusSection.hidden = true;
         scanButton.disabled = false;
     }
 });
+
+/**
+ * 把非 2xx 的回應轉成一句使用者看得懂、而且能據以行動的訊息。
+ *
+ * 只有在 content-type 確實是 JSON 時才解析 —— 冷啟動期間 Render 回的是 HTML
+ * 錯誤頁,對它呼叫 .json() 只會拋出一個與真正問題無關的解析錯誤。
+ */
+async function readErrorMessage(response) {
+    if ((response.headers.get('content-type') || '').includes('application/json')) {
+        try {
+            const data = await response.json();
+            if (data && data.error) return data.error;
+        } catch {
+            // 標了 JSON 卻解析不出來,往下走狀態碼的分支
+        }
+    }
+
+    if (response.status === 502 || response.status === 503 || response.status === 504) {
+        return '伺服器正在啟動或暫時無法回應,請 30 秒後再試一次';
+    }
+    return `掃描失敗(HTTP ${response.status}),請稍後再試一次`;
+}
 
 function showError(message) {
     errorEl.textContent = message;
