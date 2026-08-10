@@ -42,9 +42,30 @@ line-height／letter-spacing（`main.css:767-773`）。**這只證明 CSS 規則
 休眠之後掃第一次才拿得到。
 
 第 1、2 項已完整結案，移到下方「已完成」。**第 3、4、5 項留在這裡**，因為它們剩下的
-驗收條件需要瀏覽器、螢幕閱讀器或 1–2 天的觀察窗，只有你做得到；各項下方改寫成
+驗收條件需要瀏覽器、螢幕閱讀器或 1–2 天的觀察窗；各項下方改寫成
 「程式碼已完成 / 驗收未完成」，剩下要做什麼寫在該項的「待你驗收」段落。
 編號維持原本的 3、4、5 沒有重排，方便對照 commit 訊息。
+
+**2026-08-10 最後一次更新——用無頭 Chrome 跑完了一輪實機驗收。** 前一段寫的
+「只有你做得到」對其中大部分項目已經不成立：用 Playwright 驅動本機安裝的
+Chrome 151.0.7922.76，在真實瀏覽器裡完成了第 3 項的鍵盤與視覺驗收、第 4 項的離線驗收，
+以及第 5 項五項觀察裡的四項。工具只裝在暫存資料夾（`playwright-core`），
+**`client/` 與 `server/` 的 `package.json` 一個字都沒有動，repo 沒有新增任何依賴**；
+驗證腳本是跑完就丟的一次性腳本，沿用先前幾則的做法。
+
+這一輪**沒有任何程式碼改動**（所以沒有 `?v=`、沒有 `build:css`），但**查出兩件事，
+其中一件是真問題**：
+
+1. **CSP 的 `connect-src` 少了 `https://gateway.umami.is`，照現在的政策切成強制模式，
+   統計會立刻歸零。** Umami 的 script 從 `cloud.umami.is` 載入沒錯，但它送資料的
+   端點是 `gateway.umami.is`，政策裡沒有這個網域。這正是原待辦第 5 項寫的
+   「只寫前者會讓統計靜默歸零」那個坑，只是網域名稱猜錯了一個。細節與修法在第 5 項。
+2. 原本靜態稽核推論「下載報表用的那段 `<style>` 不會觸發 CSP 違規」**是錯的**，
+   實測會觸發 `style-src-elem`。但**下載功能與報表樣式都不受影響**（同樣是實測），
+   代價只是每次下載會在 Console 留一則錯誤訊息。細節同樣在第 5 項。
+
+**第 5 項第 4 步（切成正式強制）因此不能做**，理由有兩個：`connect-src` 要先補、
+觀察窗也還沒滿。而且那是對線上網站的對外變更，要你點頭才動。
 
 **編號是執行順序，不是重要性順序**，與本檔開頭的排序基準刻意不同，原因有三個：
 第 1 項可能零成本結案，先做它有機會讓後面少一件事；第 2、3 項改完立刻看得到結果；
@@ -69,7 +90,7 @@ line-height／letter-spacing（`main.css:767-773`）。**這只證明 CSS 規則
 
 ---
 
-### 3. 分類卡片改用 button，補鍵盤操作與 aria（程式碼已完成，驗收未完成）
+### 3. 分類卡片改用 button，補鍵盤操作與 aria（程式碼與瀏覽器驗收皆已完成，只剩 NVDA 未驗）
 
 `client/public/js/main.js:296` 把 click 事件掛在一個 `<div>` 上，沒有 `tabindex`、
 沒有 `role`、沒有 `aria-expanded`；而 `main.js:262` 只給 `index === 0` 加 `is-open`。
@@ -152,18 +173,42 @@ line-height／letter-spacing（`main.css:767-773`）。**這只證明 CSS 規則
   也與 repo 逐位元組相同，所以第 3 項的 accordion 結構與 CSS 改動確實已經上線
   ——**但這只證明檔案送得出去，不證明畫面正常，下面四項驗收一項都沒有被取代。**
 
-**待你驗收**（需要瀏覽器與螢幕閱讀器，我做不到）：
+**原訂的四項驗收，2026-08-10 用無頭 Chrome（151.0.7922.76）跑完三項**。做法是本機起
+server（PORT=3131），用 Playwright 把 `/api/analyze` 換成一份固定的 API 回應
+（先前對 `https://example.com` 掃出來的真實回應），確保每次比較的輸入完全相同：
 
-1. 只用鍵盤：`Tab` 走到三張卡片，`Enter` 或 `Space` 都能展開，**三個分類全部可達**。
-2. DevTools 確認 `aria-expanded` 隨展開收合切換（腳本已驗過邏輯，這一步驗的是真實瀏覽器）。
-3. 開 NVDA 掃一次，確認「掃描完成，總分 XX 分」有播報，錯誤訊息也有播報。
-   **這一步沒做就誠實記成「未驗證」。**
-4. 目視確認分類卡片標題的字體與字距和改動前一樣（上面那條字體外溢的坑是讀 CSS
-   規則推出來並補掉的，**沒有開瀏覽器看過**）。
+1. **已驗證——鍵盤可達性。** 從 `#url-input` 開始一路按 `Tab`，焦點順序是
+   `#scan-button` → `#download-report` → 三個 `.category-card-header`，
+   **三張卡片依序都走得到**。第二張按 `Enter`、第三張按 `Space` 都能展開，再按一次收合。
+   判定不是看 class，而是量 `.category-card-body` 的 `getBoundingClientRect().height`
+   ——**內容真的算繪出來了才算展開**。三張卡片的檢查項列數分別是 1 / 6 / 5，
+   確認展開的是真內容不是空殼。這一項原本最沒把握，因為 `<button>` 對 `Enter`／`Space`
+   的原生啟動行為正是 DOM stub 測不到的東西。
+2. **已驗證——`aria-expanded` 在真實瀏覽器裡同步切換**：初始 `true`／`false`／`false`，
+   展開收合各一次後回到初始值，`is-open` class 與 aria 屬性一致。
+   另外用 CDP 的 `Accessibility.getFullAXTree` 看無障礙樹，三個按鈕的可及名稱是
+   「結構化資料 1/1 項適用 0」「語意化內容結構 6/6 項適用 75」「內容可信度訊號 2/5 項適用 75」，
+   `expanded` 狀態正確帶出，`#sr-status`／`#sr-alert` 也確實以 `status`／`alert` 兩個 role
+   出現在樹上。**這不是螢幕閱讀器測試**，只是比讀 DOM 屬性強一階的旁證。
+3. **仍然未驗證——NVDA。** 上面的無障礙樹只證明「role 與狀態暴露正確」，
+   不證明 NVDA 會唸出來。live region 的播報時機（內容變更當下元素是否 hidden、
+   同一段文字連寫兩次會不會重播）只有真的開螢幕閱讀器才測得到，
+   而那正是第 3 項改動的核心。**這一項請你自己用 NVDA 掃一次**：確認
+   「掃描完成，總分 XX 分」與錯誤訊息都有播報。
+4. **已驗證——字體與字距與改動前完全相同。** 用 `git worktree` 把改動前的
+   `ef7aaaa` 拉出來跑在 PORT=3132，與現在的版本餵同一份 API 回應、同樣的
+   viewport（1280×900、DPR 2、`reducedMotion: reduce`），逐一比對三張卡片的
+   標題／計數／分數共 9 個元素、每個元素 14 個屬性（`fontFamily`、`fontSize`、
+   `fontWeight`、`fontStyle`、`letterSpacing`、`lineHeight`、`color`、`textTransform`、
+   `fontStretch`、`fontVariationSettings`、`tag`、`text`、`width`、`height`）。
+   **126 個比對值裡只有 3 個不同，就是三個標題的 tag 由 `H3` 變成 `SPAN`，那是這次改動的目的本身。**
+   標題實測值為 Fraunces / 20px / 600 / `letter-spacing: -0.2px` / `line-height: 23px` /
+   寬 99.02px，改動前後逐位元相同——**所以那條「字體外溢」的補救確實有效，
+   而且沒有補過頭。** 另外截了兩張 `#category-list` 的圖並實際看過，版面一致。
 
 ---
 
-### 4. 前端錯誤處理與冷啟動提示（程式碼已完成，驗收未完成）
+### 4. 前端錯誤處理與冷啟動提示（程式碼已完成，離線驗收完成，冷啟動仍未測）
 
 **這五項裡唯一的真 bug。** `client/public/js/main.js:44-49` 在檢查 `response.ok` 之前就
 `await response.json()`。當回應不是 JSON 時——Render free plan 冷啟動期間的 502／504 錯誤頁
@@ -229,12 +274,18 @@ line-height／letter-spacing（`main.css:767-773`）。**這只證明 CSS 規則
    下次要量，最可靠的做法是先去 Render 儀表板的 Events 確認實例真的進入
    `Autoscaling`／spin-down 狀態（或直接手動 restart），再馬上送一次請求並計時，
    不要靠「我沒動它」來推斷它睡著了。
-3. 用 DevTools 切 Offline 再送一次，確認顯示的是「無法連線到分析伺服器，請確認網路
-   連線後再試一次」。
+3. **已驗證（2026-08-10，無頭 Chrome）**：用 Playwright 的 `context.setOffline(true)`
+   把瀏覽器切成離線再送出掃描，畫面顯示的是
+   「無法連線到分析伺服器,請確認網路連線後再試一次」，`#sr-alert` 也寫入同一句話，
+   0.13 秒內回覆，**沒有誤報成「等待超過 90 秒」的逾時文案**；掃描狀態面板正確收起、
+   按鈕解除鎖定。這一項結案。
+
+   **DevTools 的 Offline 與這裡用的 CDP 離線模擬是同一個機制**（`Network.emulateNetworkConditions`），
+   所以不需要你再手動做一次。
 
 ---
 
-### 5. 加上 Content-Security-Policy（Report-Only 已完成，觀察與切正式未完成）
+### 5. 加上 Content-Security-Policy（Report-Only 已完成，觀察已做完，切正式前要先修 `connect-src`）
 
 放最後是刻意的：第 2 項加了 JSON-LD、第 3、4 項改了 JS，先讓頁面定型再寫政策，不用改兩次。
 
@@ -287,7 +338,8 @@ line-height／letter-spacing（`main.css:767-773`）。**這只證明 CSS 規則
 **我驗證過的**：實際啟動 server（PORT=3128），首頁與 `/css/main.css` 的回應都帶有
 Report-Only 標頭，且**沒有**下正式的強制標頭；`npm test` → `# pass 97 / # fail 0`。
 2026-08-10 稍晚另外確認**線上**的首頁回應帶著同一份 Report-Only 標頭，字串與草案逐字相同。
-**未驗證**：沒有開瀏覽器看過 Console，上面那五項觀察全部還沒做。
+（**這段當時寫的「沒有開瀏覽器看過 Console，五項觀察全部還沒做」已經過時**，
+觀察結果見本項最後一段。）
 
 **2026-08-10 稍晚做的靜態稽核（可以先排除一部分風險，但不能取代 Console 觀察）**：
 
@@ -298,14 +350,90 @@ Report-Only 標頭，且**沒有**下正式的強制標頭；`npm test` → `# p
   `client/public/`）。`main.js` 裡也沒有 `setAttribute('style', …)` 或 `.style.cssText = …`
   ——**這兩種是屬性寫入，會被 `style-src-attr` 管到，和逐屬性的 CSSOM 寫入不同**，
   原本第五項觀察只想到 CSSOM，這裡把真正會違規的兩種寫法一併排除了。
-- **唯一的 `<style>` 在 `main.js:930` 的 `REPORT_STYLESHEET`，它不會觸發違規**：那段樣式
+- **唯一的 `<style>` 在 `main.js:930` 的 `REPORT_STYLESHEET`，它不會觸發違規**
+  ——**⚠️ 這一整段的結論已被實測推翻，正確的說法見本項最後一段「查到的第二件事」。
+  保留原文是為了留下「靜態推論在哪裡失準」的紀錄。** 原文如下：那段樣式
   是組進「下載後的單一 HTML 檔」的字串，走的是 `new Blob(...)` → `URL.createObjectURL` →
   `<a download>` 的下載路徑（`main.js:1331-1350`），從頭到尾沒有插進本站的文件裡，
   下載完是從 `file://` 開啟、不受本站政策管轄。**這是讀程式碼推得的，未實測**，
   所以下載報表那一項觀察仍然要做。
 
-**第 4 步尚未開始**：都乾淨了就把標頭名稱從 `Content-Security-Policy-Report-Only`
-改成 `Content-Security-Policy`，重新部署，再走一次上面五項確認。
+**2026-08-10 最後一次更新——五項觀察用無頭 Chrome 跑完了四項，查到兩件事。**
+做法是用 Playwright 開 Chrome 151 連到**線上網址**，同時收兩個管道的證據：
+頁面裡註冊 `document.addEventListener('securitypolicyviolation', …)` 拿結構化的
+`violatedDirective`／`blockedURI`，以及 Console 的 `[Report Only] …` 文字訊息
+——兩邊涵蓋範圍不同，所以都收。流程走完整的一輪：載入首頁、掃描 `https://example.com`、
+下載報表、展開三張卡片。
+
+逐項結果：
+
+- **✅ Console 只有下面兩類違規，沒有其他紅字**，頁面本身的 JS 沒有任何錯誤。
+- **✅ JSON-LD 沒有被 `script-src` 攔**。這是原待辦裡「最需要親眼確認」的一項：
+  在**強制模式**的預演下（做法見下），`<script type="application/ld+json">` 仍然
+  讀得到、`JSON.parse` 成功、`@graph` 裡的 `WebSite` 與 `WebApplication` 都在，
+  違規清單裡也沒有 `script-src`。**確認它是 data block，不受 `script-src` 管轄，
+  不需要補 nonce。**
+- **✅ 分數圓環與長條的 CSSOM 動畫沒有被 `style-src` 攔**。強制模式下實測，
+  圓環的 `strokeDashoffset` computed 值是 251.327px（總分 50 對應的正確值），
+  三條長條的 computed 寬度是 0px / 312.891px / 312.891px，
+  違規清單裡沒有 `style-src-attr`。**逐屬性的 CSSOM 寫入確實不在 `style-src` 管轄範圍，
+  這一點從推論升級為實測。**
+- **✅ 下載報表功能正常**，但**觸發了一則原本預期不會發生的違規**，見下方第 2 件事。
+- **❌ Umami 後台的訪問資料——仍然未驗證。** 這需要登入 Umami 後台，我沒有帳號。
+  不過下面第 1 件事已經先一步證明了：照現在的政策切成強制，後台一定看不到新資料。
+
+**查到的第一件事（真問題，切正式前必須先修）：`connect-src` 少了 `gateway.umami.is`。**
+
+- 線上實測，Umami 的 script 從 `https://cloud.umami.is/script.js` 載入（HTTP 200，
+  `script-src` 這條寫對了），但它**送統計資料的端點是
+  `POST https://gateway.umami.is/api/send`**，政策裡沒有這個網域。
+  Report-Only 之下每次載入都會記兩筆
+  `connect-src` 違規，`blockedURI` 就是 `https://gateway.umami.is/api/send`。
+- **不是只有 Console 有訊息而已——已用強制模式預演證實它真的會被擋死。**
+  做法是本機起 server，用瀏覽器端的攔截把回應標頭換成同一份政策的**強制版**
+  （`Content-Security-Policy`，內容逐字相同），不動任何專案檔案。結果是
+  `disposition` 從 `report` 變成 `enforce`，Console 出現
+  `Fetch API cannot load https://gateway.umami.is/api/send. Refused to connect…`，
+  而第三方回應清單裡**只剩 `cloud.umami.is/script.js`，`gateway.umami.is` 一筆都沒有**。
+  **統計會靜默歸零，而且使用者與你都不會看到任何徵兆。**
+- **修法**（`server/index.js:43`，一行）：
+  `"connect-src 'self' https://cloud.umami.is https://gateway.umami.is"`。
+  上面那行註解「script-src 與 connect-src 兩條都要有 Umami」的判斷是對的，
+  錯的只是網域名稱——資料端點與 script 端點在 Umami Cloud 是兩個不同的網域。
+  **這個改動還沒做，等你確認。**
+
+**查到的第二件事（不影響功能，但要更正一則錯誤的推論）：下載報表會觸發
+`style-src-elem` 違規。**
+
+- 本檔上一則靜態稽核寫「`main.js` 的 `REPORT_STYLESHEET` 不會觸發違規，因為它從頭到尾
+  沒有插進本站的文件裡」——**這個推論是錯的，已由實測推翻**。違規確實發生，
+  `violatedDirective` 是 `style-src-elem`、`blockedURI` 是 `inline`、行號指向
+  `main.js:1246`，也就是 `doc.head.append(style)` 那一行。原因是
+  `document.implementation.createHTMLDocument()` 造出來的文件會**繼承母文件的 CSP**，
+  「沒有插進顯示中的頁面」不等於「不受政策管轄」。
+- **但功能完全不受影響，這一點也是實測的**：強制模式下按下載，檔案照樣產出
+  （11,569 bytes），HTML 裡的 `<style>` 區塊仍然完整帶著 2,741 個字元的樣式
+  ——CSP 擋的是「把樣式套用到那份離屏文件」，不是「把元素序列化成字串」。
+  把下載到的檔案用 `file://` 開起來看，`.doc-title` 的 computed 字級是 28px、
+  文字色 `rgb(16, 20, 28)`、頁面底色 `rgb(244, 246, 250)`、表格 44 列，
+  **樣式完整生效，Console 零錯誤**（下載後的檔案不受本站政策管轄，這一半原本的推論是對的）。
+- **所以這件事的實際代價只有一項：每次下載報表會在 Console 留一則錯誤訊息。**
+  三個選項，我沒有動手，等你決定：
+  1. **不處理**（推薦）。功能無損，訊息只有按下載的人看得到。
+  2. 政策放寬到 `style-src 'self' 'unsafe-inline'`。**不建議**——為了一則 Console 訊息
+     把整條 `style-src` 的防護拿掉，划不來。
+  3. 改寫 `buildReportHtml`，改成序列化之後再用字串把 `<style>` 拼進去，避開 DOM 插入。
+     這會動到下載那條路徑的程式碼，屬於另一件事，要做的話應該獨立一項。
+
+**第 4 步（切成正式強制）現在還不能做**，三個前提：
+
+1. `connect-src` 要先補上 `gateway.umami.is`，否則切過去統計就死了。
+2. 觀察窗還沒滿。`965a533` 是 2026-08-10 才上線的，原訂 1–2 天。
+   上面這一輪是「一次載入的完整流程」，證據力比「掛著跑兩天」窄——
+   例如錯誤頁、410 警示、與上次掃描比較面板這些分支，這一輪沒有全部走到。
+3. 這是對線上網站的對外變更，要你同意才推。
+
+**Commit 拆兩個**：
 
 **Commit 拆兩個**：
 `feat: 加上 Content-Security-Policy，先以 Report-Only 觀察`（已完成，`965a533`）
