@@ -5,6 +5,54 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>AEO/GEO 訊號掃描器</title>
     <meta name="description" content="貼上網址，掃描頁面對 AI 答案引擎(ChatGPT、Claude、Perplexity)的可讀性、結構化資料與內容可信度訊號。" />
+    <link rel="canonical" href="https://aeo-geo-analysis-section.onrender.com/" />
+
+    <!-- Open Graph / Twitter Card：社群分享時的標題與摘要。
+         刻意沒有 og:image —— 需要一張 1200×630 的圖，目前沒有，
+         而缺這張圖只影響分享預覽外觀，不影響任何檢測項目的判定。 -->
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://aeo-geo-analysis-section.onrender.com/" />
+    <meta property="og:title" content="AEO/GEO 訊號掃描器" />
+    <meta property="og:description" content="貼上網址，掃描頁面對 AI 答案引擎(ChatGPT、Claude、Perplexity)的可讀性、結構化資料與內容可信度訊號。" />
+    <meta property="og:locale" content="zh_TW" />
+    <meta name="twitter:card" content="summary_large_image" />
+
+    <!-- 用 @graph 同時宣告 WebSite 與 WebApplication。
+         WebSite 是必要的那一個 —— 本工具的 structured-data.js 只認
+         Organization / WebSite / LocalBusiness 當作組織實體，只寫 WebApplication
+         那一項仍會判為 warn。
+         這裡刻意不宣告 FAQPage、author 或 datePublished：頁面上沒有 FAQ、
+         沒有署名也沒有發布日期，為了衝高自己的分數宣告不存在的結構化資料，
+         正是這個工具存在的目的要勸阻的行為。 -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@graph": [
+        {
+          "@type": "WebSite",
+          "@id": "https://aeo-geo-analysis-section.onrender.com/#website",
+          "url": "https://aeo-geo-analysis-section.onrender.com/",
+          "name": "AEO/GEO 訊號掃描器",
+          "description": "貼上網址，掃描頁面對 AI 答案引擎(ChatGPT、Claude、Perplexity)的可讀性、結構化資料與內容可信度訊號。",
+          "inLanguage": "zh-Hant"
+        },
+        {
+          "@type": "WebApplication",
+          "@id": "https://aeo-geo-analysis-section.onrender.com/#webapp",
+          "url": "https://aeo-geo-analysis-section.onrender.com/",
+          "name": "AEO/GEO 訊號掃描器",
+          "description": "輸入網址即可檢測該頁面對 AI 答案引擎的可讀性、結構化資料完整度、內容可信度訊號，以及 robots.txt 對各家 AI 爬蟲的存取權限。",
+          "applicationCategory": "DeveloperApplication",
+          "operatingSystem": "Any",
+          "browserRequirements": "需要支援 ES2020 的現代瀏覽器",
+          "inLanguage": "zh-Hant",
+          "isPartOf": { "@id": "https://aeo-geo-analysis-section.onrender.com/#website" },
+          "offers": { "@type": "Offer", "price": "0", "priceCurrency": "TWD" }
+        }
+      ]
+    }
+    </script>
+
     <link rel="icon" href="images/favicon.ico?v=20260807" type="image/x-icon" />
     <link rel="stylesheet" href="css/main.css?v=20260807" />
     <script defer src="https://cloud.umami.is/script.js" data-website-id="6cd2abb2-278f-4dd3-a86b-39aa9ac33f9d"></script>
