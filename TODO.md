@@ -3,36 +3,294 @@
 AEO/GEO 檢測工具的待辦清單。建立於 2026-08-06。
 
 排序基準：影響工具核心價值的程度 × 觸發機率，同分時以修復成本判斷。
-**本清單假設這是本機單機工具**；若改為公開部署，順序會大幅變動，見文末「公開部署時的重新排序」。
+
+**2026-08-10 起前提改變——本工具已部署到 Render 公開網址**，不再是本機單機工具。
+2026-08-06 到 08-07 那批待辦是在「本機單機」前提下排序的，但它們已全部完成，
+所以前提改變不影響任何既有結論；文末「公開部署」一節（原名「公開部署時的重新排序」）
+已依實際部署狀況改寫。
+
+**下方 2026-08-10 新增的五項改以「執行順序」編號，不是重要性順序**，與本檔原本的
+排序基準不同，理由寫在該節開頭。
 
 ---
 
-## 待辦（1 = 最重要）
+## 待辦（2026-08-10 新增，編號 = 執行順序）
 
-**目前沒有待辦項目。** 2026-08-07 最後一項（HTTP 410 與 404 共用同一段警示文案）完成後，
-這份清單建立時列出的項目已全部處理完畢，見下方「已完成」。
+2026-08-07 最後一項（HTTP 410 與 404 共用同一段警示文案）完成後，這份清單建立時列出的
+項目已全部處理完畢，見下方「已完成」。**下面五項來自 2026-08-10 對公開部署後現況的重新檢視。**
 
-各則已完成紀錄裡的「未列入待辦」段落記錄了幾個刻意不做的提案（例如補 README、
-`Organization` 去重、自架中文字型、為 `semantic-html.js` 與 `content-trust.js` 補測試），
-那些是可以後續再決定的事，不是遺漏。
+**編號是執行順序，不是重要性順序**，與本檔開頭的排序基準刻意不同，原因有三個：
+第 1 項可能零成本結案，先做它有機會讓後面少一件事；第 2、3 項改完立刻看得到結果；
+第 4、5 項的驗收都要等（實例休眠 15 分鐘、CSP 觀察 1–2 天），放後面不會卡住其他進度。
+**若改以重要性排，第 4 項才是第一名**——它是這五項裡唯一的真 bug，其餘四項分別是
+設定確認、可信度、無障礙與防禦深度。
+
+貫穿五項的三件事，漏掉任何一件後面會白做：
+
+- **改動 `client/public/js/main.js` 或 `main.css` 之後，一定要更新 `client/public/index.html:9`
+  與 `index.html:127` 的 `?v=20260807` 版本號**，否則回訪使用者拿到瀏覽器快取裡的舊檔，
+  會誤以為改動沒生效。第 3、4 項都會踩到。
+- 每項結束在 `server/` 跑一次 `npm test`，確認仍是 `# pass 97 / # fail 0`。這是回歸把關，不是驗收標準。
+- 每項獨立 commit。第 3 項含兩個不相干的改動，拆成兩個 commit。
 
 ---
 
-## 公開部署時的重新排序
+### 1. 確認 `TRUST_PROXY_HOPS` 是否正確設定（5 分鐘，可能零程式碼改動）
 
-上述順序假設本機單機使用。若部署到公開網址，此 endpoint 等同「任何人都能免費驅動、
-去抓任意網址」的代理，會被拿來當 SSRF 掃描器與流量放大器。
+`server/index.js:23` 是 `Number(process.env.TRUST_PROXY_HOPS) || 0`，而 `render.yaml` 把它宣告成
+`sync: false`——值只存在 Render 儀表板，從 repo 讀不到。**若未設定或為 0，`req.ip` 拿到的是
+Render 反向代理的位址，所有訪客會被算進同一個桶，全站每分鐘只能掃 10 次。**
+這正是 `index.js:17-22` 註解裡「設太低」那個方向的後果：可用性問題，而且在單人測試時完全看不出來。
 
-原本排在這一節的三項——DNS rebinding 防護、速率限制／錯誤訊息外洩、`express.static`
-目錄收斂——均已完成，見「已完成」（前兩項於 2026-08-06，`express.static` 目錄收斂於
-2026-08-07）。待辦清單目前是空的，所以沒有任何項目會因為改成公開部署而需要提前。
+`|| 0` 另有一個副作用：打錯的值會被靜默吃成 0，而 0 在部署當下看起來一切正常。
 
-公開部署前另外要處理、目前不在清單上的兩件事（本機使用不構成問題，故未列為待辦）：
+修法步驟：
 
-- **沒有全域併發上限**：速率限制是「每個 IP 每分鐘幾次」，擋不住大量不同來源同時打進來。
-  真要公開，還需要一個同時進行的分析數上限。
-- **速率限制的計數存在單一 process 的記憶體裡**：多開 process 或多台機器時各算各的，
-  額度等於乘以份數。
+1. Render 儀表板 → 該服務 → Environment，看 `TRUST_PROXY_HOPS` 存不存在、值是多少。
+   不存在或為 0 就直接確定有問題，跳到第 3 步。
+2. 已有值就實測：用筆電對線上網址**在 60 秒內**連送 11 次掃描（固定視窗會重置，慢了測不準），
+   第 11 次應回 429；接著**立刻**用手機切行動網路送 1 次。手機也 429 代表額度共用、設定錯誤；
+   手機正常出報告代表設定正確，本項結案。
+3. 需要修就把值設成 `1`，**儲存後必須重新部署才會生效**（環境變數不會熱套用），回第 2 步重測。
+   仍然共用就往上加到 `2`，一次加一階——不要直接填大的數字，理由見 `index.js:17-22`。
+
+**驗收條件**：兩個不同公網 IP 各自擁有獨立的 10 次額度。
+**Commit**：無程式碼改動，不需要 commit。
+
+---
+
+### 2. 首頁補上 JSON-LD、canonical 與 Open Graph（20 分鐘）
+
+**這個工具用自己的標準掃自己，目前大約只有 50 分。** 依三支 analyzer 的邏輯對
+`client/public/index.html` 逐項推算：結構化資料 0 分（完全沒有 `ld+json`，走
+`structured-data.js:27` 的提早返回分支，唯一適用項目直接 fail）、語意化內容結構 100 分
+（title 13 字、meta description 64 字、單一 h1、有表格，六項全 pass）、內容可信度訊號 50 分
+（沒有 canonical → warn；沒有 `<img>`、沒有任何 `<a>`、沒有作者與日期 → 其餘四項全 na）。
+三類等權重平均得 50。
+
+**一個 AEO 評分工具在自己的評分表上拿 50 分，是可信度問題而不只是分數問題。**
+修法只動 `<head>`，不碰 JS 也不碰 SCSS，所以**這一項不需要更新 `?v=` 版本號**。
+
+修法步驟：
+
+1. 確定正式對外網址。Render 服務名是 `aeo-geo-analysis-section`，預設網址應是
+   `https://aeo-geo-analysis-section.onrender.com`，**但請以儀表板實際顯示的為準**。
+   之後若綁自訂網域，canonical 與 `og:url` 都要跟著改。
+2. 加 `<link rel="canonical" href="<正式網址>/" />`。
+3. 加一段 `<script type="application/ld+json">`，用 `@graph` 同時放 `WebSite` 與 `WebApplication`。
+   **`WebSite` 是關鍵**——`structured-data.js:4` 的 `ORGANIZATION_TYPES` 只認
+   `Organization` / `WebSite` / `LocalBusiness`，只寫 `WebApplication` 那一項仍是 warn。
+4. 加 Open Graph：`og:title`、`og:description`、`og:type="website"`、`og:url`、
+   `twitter:card="summary_large_image"`。
+5. **`og:image` 需要一張 1200×630 的圖，目前沒有。** 決定要嘛先跳過（社群分享沒有預覽圖，
+   不影響分數），要嘛另外花時間做一張。這一項未決。
+
+**驗收條件**：用工具掃自己的正式網址，總分從 50 變成 **94**（結構化資料 83、
+語意化內容結構 100、內容可信度訊號 100）。
+
+**這組數字是照 analyzer 邏輯推算的，不是實際掃過。** 若掃出來不是 94，差異本身就是有用的資訊。
+83 的來源：`WebApplication` 不在 `structured-data.js:3` 的 `CONTENT_TYPES` 名單裡，
+內容型別那一項仍是 warn，`(1 + 1 + 0.5) / 3`。
+
+**不要為了補滿那 6 分去加假的 `FAQPage`**：頁面上沒有 FAQ 就不該宣告有。首頁自己寫著
+「每一項檢查都附上判定依據，而不是只給一個數字」，為衝分數宣告不存在的結構化資料，
+正是這個工具存在的目的要勸阻的行為。94 是誠實的天花板。
+
+**Commit**：`feat: 首頁補上 JSON-LD、canonical 與 Open Graph 標籤`
+
+---
+
+### 3. 分類卡片改用 button，補鍵盤操作與 aria（1 小時）
+
+`client/public/js/main.js:296` 把 click 事件掛在一個 `<div>` 上，沒有 `tabindex`、
+沒有 `role`、沒有 `aria-expanded`；而 `main.js:262` 只給 `index === 0` 加 `is-open`。
+兩件事合起來的後果是：**鍵盤與螢幕閱讀器使用者只看得到第一個分類，另外兩個分類的所有
+檢查項完全無法展開**——那是這個工具八成的產出內容。
+
+**先看清楚這個會做到一半卡住的結構問題**：現在的 header 裡包著
+`<h3 class="category-card-title">`，而 `<button>` 的內容模型只允許 phrasing content，
+**`<h3>` 放進 `<button>` 是無效巢狀**（這是讀 HTML 規範的內容模型推得的，**未實測瀏覽器**；
+瀏覽器多半照樣算繪，但驗證器會報錯、語意也不對）。W3C ARIA 官方的 accordion 模式是反過來包：
+
+```
+<h3 class="category-card-heading-wrap">
+  <button type="button" class="category-card-header" aria-expanded="false">
+    分類名稱 ／ 6/6 項適用 ／ 分數 ／ chevron
+  </button>
+</h3>
+```
+
+副作用是螢幕閱讀器會把分數一起念進標題。**這其實是好事**——使用者一次聽到
+「結構化資料，83 分」，不用再往下找。
+
+修法步驟：
+
+1. 依上述結構改 `main.js:264-295`：新增 `h3` 外層、header 改 `<button type="button">`、
+   原本 title 那個 `h3` 降成 `<span>`。
+2. click handler 同時切換 class 與 aria：
+   `const open = card.classList.toggle('is-open'); header.setAttribute('aria-expanded', String(open));`
+   初始值依 `index === 0` 設定。
+3. 改 `client/scss/components/_report.scss:172-184`：`.category-card-header` 補 `width: 100%`
+   與 `text-align: left`（button 不會自動撐滿寬度、文字預設置中）。`cursor: pointer` 可拿掉，
+   `_reset.scss:34-38` 已替所有 button 設過。新的 `h3` 外層通常不需額外樣式，reset 已清掉 margin。
+4. 在 `client/` 跑 `npm run build:css`，用 `git diff --stat` 確認 `main.css` 只有預期的那幾行變動。
+5. **更新 `index.html:9` 與 `index.html:127` 的 `?v=` 版本號。**
+6. `index.html:44-46` 的 `#scan-status` 加 `role="status"`、`index.html:41` 的 `#scan-error`
+   加 `role="alert"`。**這裡有個陷阱**：live region 若在內容變更當下是 `hidden`，多數螢幕
+   閱讀器不會播報，而目前流程正是「先設 `textContent`，再拿掉 `hidden`」這個不會播報的順序。
+   安全做法是讓元素永遠不 hidden、改用空字串控制顯示，或先移除 `hidden` 再設文字。
+   （**依 live region 一般規則推得，需用螢幕閱讀器實測確認**；Windows 上 NVDA 免費。）
+7. 順手做完一件不相干的小改動：`server/index.js:38` 的錯誤處理中介層改成尊重 `err.status`。
+   目前它一律回 500 並 `console.error`，但 `express.json()` 遇到格式錯誤的 request body 時
+   拋出的錯誤帶 `status: 400`、`expose: true`，那是使用者輸入問題，現在會被記成伺服器故障。
+   **那個沒用到的 `next` 參數留著不要動**——Express 4 靠參數個數辨識錯誤處理器，
+   拿掉會讓整層錯誤處理靜默退化成普通中介層。
+
+**驗收條件**：
+
+- 只用鍵盤：`Tab` 走到三張卡片，`Enter` 或 `Space` 都能展開，**三個分類全部可達**。
+- DevTools 確認 `aria-expanded` 隨展開收合切換 `true` / `false`。
+- 開 NVDA 掃一次，確認掃描完成有播報。**這一步沒做就誠實記成「未驗證」，不要寫成做完了。**
+- 對 `/api/analyze` 送壞掉的 JSON body（例如 `{"url":`），確認回 **400** 而不是 500，
+  且伺服器 log 沒有把它記成 `console.error` 的伺服器故障。
+
+**Commit 拆兩個**：
+`fix: 分類卡片改用 button，補上鍵盤操作與 aria-expanded`
+`fix: 錯誤處理中介層尊重 err.status，格式錯誤的 request body 回 400`
+
+---
+
+### 4. 前端錯誤處理與冷啟動提示（40 分鐘寫 + 20 分鐘等待驗收）
+
+**這五項裡唯一的真 bug。** `client/public/js/main.js:44-49` 在檢查 `response.ok` 之前就
+`await response.json()`。當回應不是 JSON 時——Render free plan 冷啟動期間的 502／504 錯誤頁
+就是 HTML——解析會拋錯，落進外層 `catch`，畫面顯示「無法連線到分析伺服器」。
+
+**free plan 閒置 15 分鐘後會休眠，冷啟動約 30–60 秒，所以這是真實使用者最可能遇到的
+那一種失敗，而顯示的訊息是錯的、也無法據以行動。** 同一個問題還有第二半：`fetch` 沒有
+`AbortController`，伺服器不回應時「正在抓取並分析」會永遠轉下去。
+
+只動 `main.js:38-62`。修法步驟：
+
+1. **調換順序**：先判 `response.ok`，再解析 JSON。非 2xx 時先看 `content-type` 有沒有
+   `application/json`，有才 `.json()` 取 `data.error`；沒有就依狀態碼給文案——
+   502／503／504 是「伺服器正在啟動或暫時無法回應，請 30 秒後再試一次」，
+   其餘是「掃描失敗（HTTP xxx）」。
+2. **加 `AbortController`，逾時設 90 秒。** 算法：後端最壞是 HTML 抓取 10 秒，加上
+   robots.txt 與 llms.txt 並行的 10 秒，約 20 秒；冷啟動一般回報值 30–60 秒，兩者相加取保守值。
+   （**冷啟動那個數字未實測**，是業界普遍回報值。本項驗收會順便量到實際秒數，屆時可回頭調。）
+3. `catch` 裡分辨 `err.name === 'AbortError'`，給「等待超過 90 秒仍無回應」的專屬文案，
+   不要跟「無法連線」混在一起。
+4. 送出後起一個 5 秒的 `setTimeout`，時間到就把狀態文字換成「伺服器可能正在從休眠中喚醒，
+   第一次掃描約需 30–60 秒，請稍候」。**`finally` 區塊記得 `clearTimeout`**，
+   否則掃描結束了提示還會跳出來。
+5. **更新 `?v=` 版本號。**
+
+**驗收條件**（這一項是唯一需要等待的）：讓實例閒置滿 15 分鐘進入休眠（或在 Render 儀表板
+手動 restart），然後掃一次，確認三件事——第 5 秒出現喚醒提示、最終成功出報告、
+**而不是顯示那句錯誤的「無法連線到分析伺服器」**。順便記下實際冷啟動秒數。
+另外用 DevTools 切 Offline 再送一次，確認錯誤訊息合理。
+
+**Commit**：`fix: 先判斷 response.ok 再解析 JSON，並加上逾時與冷啟動提示`
+
+---
+
+### 5. 加上 Content-Security-Policy（30 分鐘寫 + 觀察 1–2 天 + 10 分鐘切正式）
+
+放最後是刻意的：第 2 項加了 JSON-LD、第 3、4 項改了 JS，先讓頁面定型再寫政策，不用改兩次。
+
+**這是防禦深度，不是補洞。** 目前整套 XSS 防禦只有一層：`main.js` 全面用 `textContent`
+的約定（見該檔開頭註解）。這層約定經逐檔確認目前沒有破口，但它沒有機制強制——
+只要日後有人寫錯一次 `innerHTML`，被檢測網站的 `<title>` 就能對這個工具下 XSS。
+第二個理由是 `index.html:10` 那支第三方 Umami script（`cloud.umami.is`，無 SRI）：
+若上游被入侵，目前沒有任何東西限制它能做什麼。
+
+規模感（不誇大）：本站沒有登入、沒有密碼、沒有付款，最壞情況外流的是使用者剛貼進去的
+網址與 localStorage 裡的掃描紀錄。不是無害，但不是帳號或金流等級。
+
+修法步驟：
+
+1. 在 `server/index.js` 的 `express.static` **之前**加一個設定標頭的 middleware。政策草案：
+
+   ```
+   default-src 'self';
+   script-src 'self' https://cloud.umami.is;
+   connect-src 'self' https://cloud.umami.is;
+   style-src 'self';
+   img-src 'self' data:;
+   font-src 'self';
+   object-src 'none';
+   base-uri 'self';
+   frame-ancestors 'none';
+   form-action 'self'
+   ```
+
+   **`script-src` 與 `connect-src` 兩條都要有 Umami**：前者讓它載得進來，後者讓它送得出去。
+   只寫前者會讓統計靜默歸零。
+2. **第一次部署一律用 `Content-Security-Policy-Report-Only` 標頭**，不要直接上正式的。
+   Report-Only 只在 Console 報告違規、不真的擋，壞掉也不影響使用者。
+3. 觀察 1–2 天，逐項確認四件事：
+   - Chrome DevTools Console 零 CSP violation。
+   - **第 2 項加的那段 JSON-LD 有沒有被回報違規。** 理論上 `<script type="application/ld+json">`
+     是 data block、不會被 `script-src` 攔，但**這一點未實測，是這份政策裡最需要親眼確認的一項**。
+     真的被擋就補 nonce。
+   - **Umami 後台看得到新的訪問資料。** 這是最容易靜默壞掉的地方，一定要看後台，
+     不要只看 Console 沒紅字就當作沒事。
+   - 下載報表功能正常（`blob:` URL 的下載）。
+4. 都乾淨了就把標頭名稱從 `Content-Security-Policy-Report-Only` 改成 `Content-Security-Policy`，
+   重新部署，再走一次上面四項確認。
+
+**Commit 拆兩個**：
+`feat: 加上 Content-Security-Policy，先以 Report-Only 觀察`
+`feat: CSP 從 Report-Only 切換為正式強制`
+
+---
+
+### 2026-08-10 檢視後刻意不做的三項
+
+這三項是同一次檢視提出來、經評估後決定不做的，記在這裡是為了避免日後重複提案：
+
+- **壓縮與快取標頭**：`server/` 沒掛任何壓縮 middleware，但 Render 邊緣層是否自行 gzip
+  無法從 repo 判斷。用 `curl -sI -H 'Accept-Encoding: gzip' https://<網址>/css/main.css`
+  看有沒有 `content-encoding` 即可，同一招也看得到 `cache-control`。
+  就算沒做 gzip，`main.css` 只有 16.7 KB，投入產出不成比例。
+  **若日後真要調快取，陷阱是不能對 `express.static` 下統一的 `maxAge`**——那會連
+  `index.html` 一起長期快取。要用 `setHeaders` 分開：六個 woff2 檔名已帶版本號
+  （`fraunces-v38-…`），可安全設一年；HTML 不行。
+- **全域併發上限**：本節下方「公開部署」一節原本列了這一項。實際部署後評估認為
+  目前沒有任何證據顯示流量會到那個量級，屬於為不會發生的情況做準備。有實際壅塞證據再說。
+- **為 `semantic-html.js` 與 `content-trust.js` 補測試**：不值得當獨立任務。
+  下次真的要改這兩支時，先寫會失敗的測試再改，那時它才有意義。
+  （這一項在 2026-08-07「冗餘 selector」那則已完成紀錄裡也提過，此處是再次確認維持不做。）
+
+各則已完成紀錄裡的「未列入待辦」段落另記錄了幾個刻意不做的提案（例如補 README、
+`Organization` 去重、自架中文字型），那些是可以後續再決定的事，不是遺漏。
+
+---
+
+## 公開部署（已發生，2026-08-10 改寫本節）
+
+本節原本是「若將來公開部署，順序要怎麼重排」的假設性規劃。**部署已經發生**
+（Render，設定見 `render.yaml`），所以改寫成部署後的實際狀況。
+
+公開之後，此 endpoint 等同「任何人都能免費驅動、去抓任意網址」的代理，會被拿來當
+SSRF 掃描器與流量放大器。原本排在這一節的三項——DNS rebinding 防護、速率限制／
+錯誤訊息外洩、`express.static` 目錄收斂——均已完成，見「已完成」（前兩項於 2026-08-06，
+`express.static` 目錄收斂於 2026-08-07）。**這三道防護是這次公開部署的前提，仍然成立。**
+
+原本列在這裡、標記為「公開部署前另外要處理」的兩件事，實際部署後的結論：
+
+- **沒有全域併發上限**：速率限制是「每個 IP 每分鐘幾次」，擋不住大量不同來源同時打進來；
+  且 `routes/analyze.js:68` 的 `cheerio.load()` 解析最大 5 MB HTML 是同步的，會佔住 event loop，
+  free plan 只有 0.1 CPU。**經評估決定暫不處理**，理由與做法見上方「2026-08-10 檢視後
+  刻意不做的三項」。有實際壅塞證據再重新提案。
+- **速率限制的計數存在單一 process 的記憶體裡**：Render free plan 是單一實例單一 process，
+  所以「多開 process 各算各的」這個問題目前不成立。**日後若升級方案並開多個實例，
+  這一項會立刻變成真問題**，屆時額度等於乘以實例數，要改成共用的計數存放（例如 Redis）。
+  現在不做。
+
+部署後新發現、與公開身分直接相關的兩項已列入待辦：`TRUST_PROXY_HOPS` 的設定確認（第 1 項，
+沒設對的話速率限制會變成全站共用一份額度）與 CSP（第 5 項，公開站 + 第三方 Umami script）。
 
 ---
 
@@ -298,7 +556,8 @@ AEO/GEO 檢測工具的待辦清單。建立於 2026-08-06。
 - **未涵蓋的部分**：計時側通道沒有處理（DNS 解析失敗與私有網段判定都在毫秒級完成，
   兩者的耗時差異不足以區分，但沒有實際量測過）；記憶體裡過期項目的清理沒有單元測試——
   清掉與沒清掉的對外行為完全相同，要測就得為測試開放內部狀態，判斷不值得。
-  全域併發上限與多 process 共用計數兩件事屬於公開部署才需要，見上方「公開部署時的重新排序」。
+  全域併發上限與多 process 共用計數兩件事屬於公開部署才需要，見上方「公開部署」一節
+  （2026-08-10 部署後兩者均評估為暫不處理，理由記在該節）。
 
 2026-08-06，DNS rebinding（TOCTOU）完整防護（完成時列為待辦第 1 項）已實作並實測驗證：
 
