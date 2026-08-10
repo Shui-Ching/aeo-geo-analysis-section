@@ -739,14 +739,20 @@ h3 {
   overflow: hidden;
 }
 
+.category-card-heading-wrap {
+  font: inherit;
+  letter-spacing: normal;
+}
+
 .category-card-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 16px;
   padding: 24px;
-  cursor: pointer;
   user-select: none;
+  width: 100%;
+  text-align: left;
 }
 .category-card-header:hover {
   background: #eef1f6;
@@ -759,7 +765,11 @@ h3 {
 }
 
 .category-card-title {
+  font-family: "Fraunces", "Noto Serif TC", serif;
   font-size: 1.25rem;
+  font-weight: 600;
+  line-height: 1.15;
+  letter-spacing: -0.01em;
 }
 
 .category-card-count {

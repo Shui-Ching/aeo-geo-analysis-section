@@ -169,14 +169,26 @@
     overflow: hidden;
 }
 
+// h3 只負責語意與螢幕閱讀器的標題導覽,視覺樣式全由裡面的 button 負責。
+// 這裡必須把 h1,h2,h3 的全域規則(_base.scss)整組還原:改動前這個 h3 只包住標題文字,
+// 現在它連 count 與 score 一起包進去了,不還原的話 Fraunces 與負字距會外溢到那兩者。
+// font 是簡寫,不含 letter-spacing,所以要另外寫一行。
+.category-card-heading-wrap {
+    font: inherit;
+    letter-spacing: normal;
+}
+
 .category-card-header {
     display: flex;
     align-items: center;
     justify-content: space-between;
     gap: $spacing-4;
     padding: $spacing-6;
-    cursor: pointer;
     user-select: none;
+    // button 不會自動撐滿寬度,文字也預設置中,兩者都要明確指定。
+    // cursor: pointer 由 _reset.scss 統一給所有 button,這裡不重複。
+    width: 100%;
+    text-align: left;
 
     &:hover {
         background: $color-surface-raised;
@@ -189,8 +201,14 @@
     gap: $spacing-3;
 }
 
+// 原本這裡是 h3,四項標題樣式來自 _base.scss 的 h1,h2,h3 全域規則;
+// 改成 span 之後那條規則不再命中,必須在這裡逐項寫回來,否則標題會變成內文字體。
 .category-card-title {
+    font-family: $font-display;
     font-size: $font-size-md;
+    font-weight: 600;
+    line-height: 1.15;
+    letter-spacing: -0.01em;
 }
 
 .category-card-count {

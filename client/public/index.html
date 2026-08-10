@@ -54,7 +54,7 @@
     </script>
 
     <link rel="icon" href="images/favicon.ico?v=20260807" type="image/x-icon" />
-    <link rel="stylesheet" href="css/main.css?v=20260807" />
+    <link rel="stylesheet" href="css/main.css?v=20260810" />
     <script defer src="https://cloud.umami.is/script.js" data-website-id="6cd2abb2-278f-4dd3-a86b-39aa9ac33f9d"></script>
 </head>
 <body>
@@ -87,6 +87,14 @@
                     </button>
                 </form>
                 <p class="scan-form-error mono" id="scan-error" hidden></p>
+
+                <!-- 螢幕閱讀器專用的即時區域(live region)。
+                     為什麼不直接把 role 加在 #scan-error 與 #scan-status 上:
+                     live region 若在內容變更的當下是 hidden,多數螢幕閱讀器不會播報,
+                     而 #scan-status 正是「掃描完成就被隱藏」,永遠播不到最重要的那一則。
+                     這兩個元素改成永遠存在、永遠不 hidden,只用文字內容控制播報。 -->
+                <p class="visually-hidden" id="sr-status" role="status"></p>
+                <p class="visually-hidden" id="sr-alert" role="alert"></p>
             </section>
 
             <section class="scan-status" id="scan-status" hidden>
@@ -172,6 +180,6 @@
         </svg>
     </button>
 
-    <script src="js/main.js?v=20260807"></script>
+    <script src="js/main.js?v=20260810"></script>
 </body>
 </html>

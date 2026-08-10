@@ -16,6 +16,9 @@ const statusText = document.getElementById('scan-status-text');
 const reportSection = document.getElementById('report');
 const downloadButton = document.getElementById('download-report');
 const backToTopButton = document.getElementById('back-to-top');
+// 螢幕閱讀器專用的即時區域,永遠存在也永遠不 hidden,理由見 index.html 該處註解。
+const srStatus = document.getElementById('sr-status');
+const srAlert = document.getElementById('sr-alert');
 
 // 下載報表時要用到的是「畫面上這一份」報告,而不是重新打一次 API,
 // 所以把本次結果與比較基準留在這裡,交給下載按鈕的事件處理器讀取。
@@ -34,6 +37,7 @@ form.addEventListener('submit', async (event) => {
     statusText.textContent = `正在抓取並分析 ${url}`;
     statusSection.hidden = false;
     scanButton.disabled = true;
+    announce(`正在抓取並分析 ${url}`);
 
     try {
         const response = await fetch('/api/analyze', {
@@ -54,6 +58,9 @@ form.addEventListener('submit', async (event) => {
         renderReport(data, previous);
         saveSnapshot(buildSnapshot(data));
         reportSection.hidden = false;
+        // 掃描完成是最重要的一則播報:視覺上報告直接出現,但螢幕閱讀器的焦點
+        // 還停在輸入框,不主動播報的話使用者不會知道結果已經出來了。
+        announce(`掃描完成,總分 ${data.overallScore} 分,報告已顯示在下方`);
     } catch (err) {
         showError('無法連線到分析伺服器');
     } finally {
@@ -65,11 +72,19 @@ form.addEventListener('submit', async (event) => {
 function showError(message) {
     errorEl.textContent = message;
     errorEl.hidden = false;
+    srAlert.textContent = message;
 }
 
 function hideError() {
     errorEl.hidden = true;
     errorEl.textContent = '';
+    srAlert.textContent = '';
+}
+
+// 寫進 role="status" 的即時區域。同一段文字連續寫兩次不會觸發第二次播報,
+// 但本站每則訊息都帶著網址或分數,不會出現重複的內容。
+function announce(message) {
+    srStatus.textContent = message;
 }
 
 function renderReport(data, previous) {
@@ -259,14 +274,24 @@ function renderCategoryList(categories) {
     Object.values(categories).forEach((cat, index) => {
         const card = document.createElement('div');
         card.className = 'category-card';
-        if (index === 0) card.classList.add('is-open');
+        const isOpen = index === 0;
+        if (isOpen) card.classList.add('is-open');
 
-        const header = document.createElement('div');
+        // W3C ARIA 的 accordion 模式:標題在外、可操作的觸發器(button)在內。
+        // 不能反過來把 h3 塞進 button —— button 的內容模型只允許 phrasing content,
+        // 那是無效巢狀。副作用是螢幕閱讀器會把分數一起念進標題,這是好事:
+        // 使用者一次聽到「結構化資料,83 分」,不用再往下找。
+        const headingWrap = document.createElement('h3');
+        headingWrap.className = 'category-card-heading-wrap';
+
+        const header = document.createElement('button');
+        header.type = 'button';
         header.className = 'category-card-header';
+        header.setAttribute('aria-expanded', String(isOpen));
 
         const heading = document.createElement('div');
         heading.className = 'category-card-heading';
-        const title = document.createElement('h3');
+        const title = document.createElement('span');
         title.className = 'category-card-title';
         title.textContent = cat.label;
         const count = document.createElement('span');
@@ -293,7 +318,11 @@ function renderCategoryList(categories) {
         scoreWrap.append(scoreValue, chevron);
 
         header.append(heading, scoreWrap);
-        header.addEventListener('click', () => card.classList.toggle('is-open'));
+        header.addEventListener('click', () => {
+            const open = card.classList.toggle('is-open');
+            header.setAttribute('aria-expanded', String(open));
+        });
+        headingWrap.append(header);
 
         const body = document.createElement('div');
         body.className = 'category-card-body';
@@ -305,7 +334,7 @@ function renderCategoryList(categories) {
         }
         body.append(bodyInner);
 
-        card.append(header, body);
+        card.append(headingWrap, body);
         container.append(card);
     });
 }
