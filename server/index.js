@@ -35,12 +35,15 @@ app.use(express.json({ limit: '10kb' }));
 // 第二個理由是 index.html 那支第三方 Umami script(cloud.umami.is,無 SRI):
 // 若上游被入侵,目前沒有任何東西限制它能做什麼。
 //
-// script-src 與 connect-src 兩條都要有 Umami:前者讓它載得進來,後者讓它送得出去。
-// 只寫前者會讓統計靜默歸零。
+// script-src 與 connect-src 兩條都要有 Umami,但**網域不同**,不能兩條抄同一個:
+//   script-src  —— https://cloud.umami.is,script.js 從這裡載入。
+//   connect-src —— https://gateway.umami.is,統計資料 POST 到這裡(/api/send)。
+// 兩條都寫 cloud.umami.is 的話,script 載得進來、資料送不出去,統計會靜默歸零,
+// 而且使用者與站方都看不到任何徵兆(已用強制模式實測確認)。
 const CSP_DIRECTIVES = [
   "default-src 'self'",
   "script-src 'self' https://cloud.umami.is",
-  "connect-src 'self' https://cloud.umami.is",
+  "connect-src 'self' https://cloud.umami.is https://gateway.umami.is",
   "style-src 'self'",
   "img-src 'self' data:",
   "font-src 'self'",
