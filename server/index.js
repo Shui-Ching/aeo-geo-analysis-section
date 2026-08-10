@@ -34,10 +34,28 @@ app.use(express.static(path.join(__dirname, '..', 'client', 'public')));
 // 把它們算進同一份額度會讓正常使用者一進站就被擋。
 app.use('/api', createRateLimiter(), analyzeRouter);
 
-// 統一錯誤處理:分析過程中任何未預期的例外都回傳 500 而不是讓 process 掛掉
+// 統一錯誤處理:分析過程中任何未預期的例外都回傳 500 而不是讓 process 掛掉。
+//
+// 有 err.status 就尊重它,沒有才回 500 —— express.json() 遇到格式錯誤的 request body
+// 會拋出帶 status: 400 的錯誤,那是使用者輸入問題,不該被記成伺服器故障。
+// console.error 因此也只留給 5xx。
+//
+// 訊息不直接用 err.message:body-parser 的原文是英文的解析器內部訊息
+// (例如 "Unexpected token } in JSON at position 12"),放進中文介面既突兀,
+// 也把內部實作細節送了出去。4xx 一律換成同一句中文。
+//
+// 沒用到的 next 參數不能拿掉:Express 4 靠參數個數辨識錯誤處理中介層,
+// 少一個參數這一層會靜默退化成普通中介層,所有錯誤都不再被接住。
 app.use((err, req, res, next) => {
-  console.error(err);
-  res.status(500).json({ error: '伺服器內部錯誤' });
+  const status = Number.isInteger(err.status) && err.status >= 400 && err.status < 600 ? err.status : 500;
+
+  if (status >= 500) {
+    console.error(err);
+  } else {
+    console.warn(`[${req.method} ${req.originalUrl}] ${status}: ${err.message}`);
+  }
+
+  res.status(status).json({ error: status >= 500 ? '伺服器內部錯誤' : '請求格式錯誤' });
 });
 
 app.listen(PORT, () => {
