@@ -53,11 +53,20 @@ const CSP_DIRECTIVES = [
   "form-action 'self'",
 ].join('; ');
 
-// 先用 Report-Only 上線:只在 Console 報告違規、不真的擋,政策寫錯也不影響使用者。
-// 觀察 1–2 天、確認 Console 零違規、Umami 後台仍有新資料、報表下載正常之後,
-// 才把標頭名稱換成正式的 Content-Security-Policy。
+// 2026-08-10:先以 Report-Only 上線觀察,現已切換為正式強制,政策內容一字未改。
+// 切換前用瀏覽器攔截回應標頭做過強制模式預演(政策字串與這裡逐字相同),確認
+// JSON-LD 讀得到(它是 data block,不受 script-src 管轄)、分數圓環與長條的 CSSOM
+// 動畫正常(逐屬性寫入不受 style-src 管轄)、字型載入正常、報表下載正常。
+//
+// 已知且刻意不處理的一則違規:下載報表時 main.js 用
+// document.implementation.createHTMLDocument() 造出的離屏文件會繼承本站 CSP,
+// 往它的 head 插入 <style> 會觸發 style-src-elem。實測下載檔案內容完整、樣式
+// 完全生效(下載後從 file:// 開啟,不受本站政策管轄),代價只有 Console 一則訊息。
+// 為了消掉這則訊息而放寬成 'unsafe-inline' 不划算,所以維持現狀。
+//
+// 要回退成觀察模式,把下面的標頭名稱換回 Content-Security-Policy-Report-Only 即可。
 app.use((req, res, next) => {
-  res.setHeader('Content-Security-Policy-Report-Only', CSP_DIRECTIVES);
+  res.setHeader('Content-Security-Policy', CSP_DIRECTIVES);
   next();
 });
 
