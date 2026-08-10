@@ -26,6 +26,38 @@ if (TRUST_PROXY_HOPS > 0) {
 }
 
 app.use(express.json({ limit: '10kb' }));
+
+// Content-Security-Policy —— 這是防禦深度,不是在補一個已知的洞。
+//
+// 目前整套 XSS 防禦只有一層:client/public/js/main.js 全面用 textContent 的約定
+// (見該檔開頭註解)。這層約定經逐檔確認沒有破口,但它沒有機制強制 —— 只要日後
+// 有人寫錯一次 innerHTML,被檢測網站的 <title> 就能對這個工具下 XSS。
+// 第二個理由是 index.html 那支第三方 Umami script(cloud.umami.is,無 SRI):
+// 若上游被入侵,目前沒有任何東西限制它能做什麼。
+//
+// script-src 與 connect-src 兩條都要有 Umami:前者讓它載得進來,後者讓它送得出去。
+// 只寫前者會讓統計靜默歸零。
+const CSP_DIRECTIVES = [
+  "default-src 'self'",
+  "script-src 'self' https://cloud.umami.is",
+  "connect-src 'self' https://cloud.umami.is",
+  "style-src 'self'",
+  "img-src 'self' data:",
+  "font-src 'self'",
+  "object-src 'none'",
+  "base-uri 'self'",
+  "frame-ancestors 'none'",
+  "form-action 'self'",
+].join('; ');
+
+// 先用 Report-Only 上線:只在 Console 報告違規、不真的擋,政策寫錯也不影響使用者。
+// 觀察 1–2 天、確認 Console 零違規、Umami 後台仍有新資料、報表下載正常之後,
+// 才把標頭名稱換成正式的 Content-Security-Policy。
+app.use((req, res, next) => {
+  res.setHeader('Content-Security-Policy-Report-Only', CSP_DIRECTIVES);
+  next();
+});
+
 // 只服務 client/public,不服務整個 client/ —— 後者會把 package.json、
 // package-lock.json 與 scss/ 原始碼一併開放下載。
 app.use(express.static(path.join(__dirname, '..', 'client', 'public')));
