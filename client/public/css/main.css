@@ -1136,3 +1136,15 @@ h3 {
   color: #868fa3;
   line-height: 1.6;
 }
+
+.site-footer {
+  margin-top: 48px;
+  padding-top: 24px;
+  border-top: 1px solid #dde3ec;
+}
+
+.site-footer-note {
+  font-size: 0.875rem;
+  color: #868fa3;
+  line-height: 1.6;
+}

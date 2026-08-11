@@ -1,0 +1,13 @@
+@use '../variables' as *;
+
+.site-footer {
+    margin-top: $spacing-12;
+    padding-top: $spacing-6;
+    border-top: 1px solid $color-border;
+}
+
+.site-footer-note {
+    font-size: $font-size-xs;
+    color: $color-text-tertiary;
+    line-height: 1.6;
+}
