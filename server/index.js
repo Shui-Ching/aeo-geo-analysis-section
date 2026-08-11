@@ -32,18 +32,25 @@ app.use(express.json({ limit: '10kb' }));
 // 目前整套 XSS 防禦只有一層:client/public/js/main.js 全面用 textContent 的約定
 // (見該檔開頭註解)。這層約定經逐檔確認沒有破口,但它沒有機制強制 —— 只要日後
 // 有人寫錯一次 innerHTML,被檢測網站的 <title> 就能對這個工具下 XSS。
-// 第二個理由是 index.html 那支第三方 Umami script(cloud.umami.is,無 SRI):
-// 若上游被入侵,目前沒有任何東西限制它能做什麼。
+// 第二個理由是 index.html 那兩支第三方 script(Umami 的 cloud.umami.is、
+// Google Analytics 的 googletagmanager.com,都無 SRI):若上游被入侵,
+// 目前沒有任何東西限制它們能做什麼。
 //
-// script-src 與 connect-src 兩條都要有 Umami,但**網域不同**,不能兩條抄同一個:
-//   script-src  —— https://cloud.umami.is,script.js 從這裡載入。
-//   connect-src —— https://gateway.umami.is,統計資料 POST 到這裡(/api/send)。
-// 兩條都寫 cloud.umami.is 的話,script 載得進來、資料送不出去,統計會靜默歸零,
-// 而且使用者與站方都看不到任何徵兆(已用強制模式實測確認)。
+// 兩家分析工具都是 script-src 與 connect-src 要分開寫,不能兩條抄同一個網域:
+//   Umami   —— script-src: cloud.umami.is(載入 script.js);
+//              connect-src: gateway.umami.is(資料 POST 到 /api/send)。
+//   GA      —— script-src: www.googletagmanager.com(載入 gtag.js);
+//              connect-src: www.google-analytics.com 與 *.google-analytics.com
+//              (gtag 送資料的 collect 端點,含 region1.google-analytics.com
+//              這類區域子網域)、以及 www.googletagmanager.com 本身
+//              (gtag.js 內部有一部分設定/量測請求會打回這個網域)。
+// 只寫 script-src 漏了 connect-src 的話,script 載得進來、資料送不出去,
+// 統計會靜默歸零,而且使用者與站方都看不到任何徵兆
+// (Umami 已用強制模式實測確認過這個坑,GA 依官方文件比照處理,未逐一實測)。
 const CSP_DIRECTIVES = [
   "default-src 'self'",
-  "script-src 'self' https://cloud.umami.is",
-  "connect-src 'self' https://cloud.umami.is https://gateway.umami.is",
+  "script-src 'self' https://cloud.umami.is https://www.googletagmanager.com",
+  "connect-src 'self' https://cloud.umami.is https://gateway.umami.is https://www.google-analytics.com https://*.google-analytics.com https://www.googletagmanager.com",
   "style-src 'self'",
   "img-src 'self' data:",
   "font-src 'self'",
