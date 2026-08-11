@@ -16,9 +16,9 @@ AEO/GEO 檢測工具的待辦清單。建立於 2026-08-06。
 
 ## 未結案的驗收（2026-08-10 整理，本節是索引，不是新的待辦）
 
-**這份清單裡已經沒有「程式碼未完成」的項目，剩下的四項全部是驗收**，缺的是硬體、
-帳號或時間，不是工時。四項原本散在三個地方（下方第 3、4、5 項，以及「已完成」裡的
-`TRUST_PROXY_HOPS`），要對帳得翻三次，所以集中列在這裡。
+**這份清單裡已經沒有「程式碼未完成」的項目，剩下的三項全部是驗收**，缺的是硬體、
+帳號或時間，不是工時。三項原本散在兩個地方（下方第 3、4 項，以及「已完成」裡的
+`TRUST_PROXY_HOPS`），要對帳得翻兩次，所以集中列在這裡。
 
 **各項的完整脈絡仍以原處為準，本節沒有搬動或刪除任何內容**，只有指路與現況摘要。
 刻意不用數字編號，避免與下方「編號 = 執行順序」的第 3、4、5 項混淆。
@@ -52,16 +52,6 @@ AEO/GEO 檢測工具的待辦清單。建立於 2026-08-06。
   **已有的**：這一項的每一條程式碼分支都已用瀏覽器攔截回應驗過（502 帶 HTML、
   404 帶 HTML、400 帶 JSON、第 5 秒的喚醒提示、`clearTimeout`、離線）。
 
-- **Umami 後台的訪問資料**（出處：第 5 項最後一段）
-  **缺**：Umami Cloud 的後台帳號。
-  **怎麼驗**：登入後台，看切換成強制 CSP 之後有沒有新的訪問資料。
-  **這不是 CSP 的未知數，界定要分清楚**：「強制模式 + 補好的 `connect-src`」這個組合
-  已經實測過——`gateway.umami.is/api/send` 回 200、`connect-src` 違規歸零。
-  還沒驗證的只有「Umami 自己的 ingestion 有沒有把這些請求記成訪問資料」。
-  真的完全沒資料，要先排除的是 Umami 端的設定（網站 ID、時區、後台的資料延遲），
-  不是 CSP；若要排除 CSP，把標頭名稱換回 Report-Only 跑一次、看違規清單裡有沒有
-  `connect-src` 即可。**不必當成緊急事項。**
-
 - **`TRUST_PROXY_HOPS` 的雙 IP 實測**（出處：「已完成」2026-08-10 那則）
   **缺**：第二個公網 IP。**2026-08-10 你說回家用家裡網路測**，在公司測不了。
   **怎麼驗**：用筆電對線上網址**在 60 秒內**連送 11 次掃描（固定視窗會重置，慢了測不準），
@@ -71,7 +61,7 @@ AEO/GEO 檢測工具的待辦清單。建立於 2026-08-06。
   （由截圖確認），所以「未設定或為 0，全站共用一份額度」這個最壞情況不成立。
   **但這不等於層數正確**，層數對不對只有雙 IP 實測證明得了。
 
-**這四項以外沒有其他未結案項目。** 本檔刻意保留了被後續推翻的舊段落作為判斷演進的紀錄，
+**這三項以外沒有其他未結案項目。** 本檔刻意保留了被後續推翻的舊段落作為判斷演進的紀錄，
 所以直接搜尋關鍵字會誤判，以下三處讀起來像未決、實際都已結案：下載報表的
 `style-src-elem` 違規（依三個選項的第 1 案「不處理」結案，見第 5 項）、CSP 切成正式強制
 （已完成，`209c187`）、SSRF 防護的「連線池重用既有 socket 不會再解析」（同一句已論證
@@ -115,53 +105,26 @@ line-height／letter-spacing（`main.css:767-773`）。**這只證明 CSS 規則
 **2026-08-10 最後一次更新——用無頭 Chrome 跑完了一輪實機驗收。** 前一段寫的
 「只有你做得到」對其中大部分項目已經不成立：用 Playwright 驅動本機安裝的
 Chrome 151.0.7922.76，在真實瀏覽器裡完成了第 3 項的鍵盤與視覺驗收、第 4 項的離線驗收，
-以及第 5 項五項觀察裡的四項。工具只裝在暫存資料夾（`playwright-core`），
+以及第 5 項的四項觀察。工具只裝在暫存資料夾（`playwright-core`），
 **`client/` 與 `server/` 的 `package.json` 一個字都沒有動，repo 沒有新增任何依賴**；
 驗證腳本是跑完就丟的一次性腳本，沿用先前幾則的做法。
 
 第 4 項原本以為非得等實例休眠才驗得到的分支（502 的 HTML 錯誤頁、5 秒喚醒提示、
 `clearTimeout`），改用瀏覽器攔截回應也全部驗掉了，剩下的只有「實際冷啟動秒數」這個數字。
 
-這一輪**沒有任何程式碼改動**（所以沒有 `?v=`、沒有 `build:css`），但**查出兩件事，
-其中一件是真問題**：
+這一輪**沒有任何程式碼改動**（所以沒有 `?v=`、沒有 `build:css`），但**查出一件事**：
+原本靜態稽核推論「下載報表用的那段 `<style>` 不會觸發 CSP 違規」**是錯的**，
+實測會觸發 `style-src-elem`。但**下載功能與報表樣式都不受影響**（同樣是實測），
+代價只是每次下載會在 Console 留一則錯誤訊息。細節同樣在第 5 項。
 
-1. **CSP 的 `connect-src` 少了 `https://gateway.umami.is`，照現在的政策切成強制模式，
-   統計會立刻歸零。** Umami 的 script 從 `cloud.umami.is` 載入沒錯，但它送資料的
-   端點是 `gateway.umami.is`，政策裡沒有這個網域。這正是原待辦第 5 項寫的
-   「只寫前者會讓統計靜默歸零」那個坑，只是網域名稱猜錯了一個。細節與修法在第 5 項。
-2. 原本靜態稽核推論「下載報表用的那段 `<style>` 不會觸發 CSP 違規」**是錯的**，
-   實測會觸發 `style-src-elem`。但**下載功能與報表樣式都不受影響**（同樣是實測），
-   代價只是每次下載會在 Console 留一則錯誤訊息。細節同樣在第 5 項。
-
-**第 5 項第 4 步（切成正式強制）因此不能做**，理由有兩個：`connect-src` 要先補、
-觀察窗也還沒滿。而且那是對線上網站的對外變更，要你點頭才動。
-（**這一段是當時的判斷，已被下面兩輪推翻**：`connect-src` 已補上，切正式也已在
+**第 5 項第 4 步（切成正式強制）當時因為觀察窗還沒滿而不能做**，而且那是對線上網站的
+對外變更，要你點頭才動。（**這一段是當時的判斷，已被下面一輪推翻**：切正式已在
 你同意後完成，見本節末尾與第 5 項。保留原文是為了留下判斷演進的紀錄。）
 
-**2026-08-10 最後一輪——上面第 1 件事已經修掉了**（`bbc926f`）：
-`server/index.js:43` 的 `connect-src` 補上 `https://gateway.umami.is`，順手改掉那則
-誤導人的註解。這一輪**只動這一個檔案**，`client/` 沒有任何改動，所以沒有 `?v=`、
-沒有 `build:css`；`server/` 的 `npm test` 仍是 `# pass 97 / # fail 0`。
-**這則原本寫「commit 還沒 push」，已經過時，改寫如下：`bbc926f` 已經 push 且已生效在線上。**
-（驗證見本節下方「2026-08-10 收尾對帳」。）「切成正式強制」仍是對外變更，還在等你決定。
-第 2 件事（下載報表的 `style-src-elem` 違規）維持原樣沒有動，三個選項仍在第 5 項末尾等你選。
-
-**這一輪之後，這份清單裡我做得到的事已經全部做完。** 剩下的三項驗收缺的是硬體、
+**這一輪之後，這份清單裡我做得到的事已經全部做完。** 剩下的兩項驗收缺的是硬體、
 帳號或時間，不是工時：第 3 項的 NVDA 播報（要螢幕閱讀器）、第 4 項的實際冷啟動秒數
-（要一個真的睡著的線上實例，且要先在 Render 儀表板確認它睡了）、第 5 項的 Umami 後台
-訪問資料（要後台帳號）。另外「已完成」裡的 `TRUST_PROXY_HOPS` 雙 IP 實測也還缺第二個
-公網 IP，那一項的驗收條件同樣是未驗證狀態。
-
-**2026-08-10 收尾對帳（沒有任何程式碼改動，只更正這份文件裡三處過時的敘述）**：
-本檔原本有三個地方寫著「`bbc926f` 還沒 push、線上跑的仍是舊政策」——本節上一段、
-第 5 項的 commit 紀錄、以及第 5 項「第 4 步現在還不能做」的第 1 個前提。**這三處都已經
-過時，已就地改寫。** **我驗證過的**：`git fetch` 之後
-`git rev-list --left-right --count origin/main...main` 是 `0 0`，本地與遠端同一個 commit；
-`curl -sI` 線上首頁，`content-security-policy-report-only` 標頭裡確實含
-`connect-src 'self' https://cloud.umami.is https://gateway.umami.is`。
-兩條證據互相獨立，所以「補丁已經在線上生效」是實測，不是推論。
-**實質影響**：第 5 項切正式的第 1 個前提已解除，原本擔心的 push 順序問題不存在了，
-剩下的前提只有觀察窗與你的同意。
+（要一個真的睡著的線上實例，且要先在 Render 儀表板確認它睡了）。另外「已完成」裡的
+`TRUST_PROXY_HOPS` 雙 IP 實測也還缺第二個公網 IP，那一項的驗收條件同樣是未驗證狀態。
 
 **2026-08-10 最後一輪——第 5 項已全部完成並上線**（`209c187`）。你明確同意之後，
 CSP 從 Report-Only 切換為正式強制，政策字串一字未改。**觀察窗未滿就切了，這是你的決定
@@ -170,11 +133,8 @@ CSP 從 Report-Only 切換為正式強制，政策字串一字未改。**觀察�
 `Content-Security-Policy` 且完全不帶 Report-Only（push 後約 30 秒線上標頭翻新），
 線上煙霧測試 `POST /api/analyze` 正常出報告。細節與逐項證據見第 5 項。
 
-**這一輪之後，這份清單裡剩下的四項全部是我做不到的驗收**，缺的是硬體、帳號或時間：
-第 3 項的 NVDA 播報、第 4 項的實際冷啟動秒數、第 5 項的 Umami 後台訪問資料
-（**這一項不是 CSP 的未知數**——「強制模式 + 補好的 `connect-src`」這個組合已經實測過，
-`gateway.umami.is/api/send` 回 200、`connect-src` 違規歸零；還沒驗證的只有
-「Umami 自己的後台有沒有把這些請求記成訪問資料」，與 CSP 無關），以及「已完成」裡
+**這一輪之後，這份清單裡剩下的三項全部是我做不到的驗收**，缺的是硬體、帳號或時間：
+第 3 項的 NVDA 播報、第 4 項的實際冷啟動秒數，以及「已完成」裡
 `TRUST_PROXY_HOPS` 的雙 IP 實測。
 
 **編號是執行順序，不是重要性順序**，與本檔開頭的排序基準刻意不同，原因有三個：
@@ -412,15 +372,18 @@ server（PORT=3131），用 Playwright 把 `/api/analyze` 換成一份固定的 
 
 ---
 
-### 5. 加上 Content-Security-Policy（已全部完成並上線，只剩 Umami 後台數據待你看一眼）
+### 5. 加上 Content-Security-Policy（已全部完成並上線）
+
+（2026-08-11：Umami 已整個移除，本節原本記錄的 Umami CSP 除錯過程一併清掉，
+只保留 Google Analytics 與其餘仍成立的部分。）
 
 放最後是刻意的：第 2 項加了 JSON-LD、第 3、4 項改了 JS，先讓頁面定型再寫政策，不用改兩次。
 
 **這是防禦深度，不是補洞。** 目前整套 XSS 防禦只有一層：`main.js` 全面用 `textContent`
 的約定（見該檔開頭註解）。這層約定經逐檔確認目前沒有破口，但它沒有機制強制——
 只要日後有人寫錯一次 `innerHTML`，被檢測網站的 `<title>` 就能對這個工具下 XSS。
-第二個理由是 `index.html:10` 那支第三方 Umami script（`cloud.umami.is`，無 SRI）：
-若上游被入侵，目前沒有任何東西限制它能做什麼。
+第二個理由是 `index.html` 那支第三方 Google Analytics script
+（`www.googletagmanager.com`，無 SRI）：若上游被入侵，目前沒有任何東西限制它能做什麼。
 
 規模感（不誇大）：本站沒有登入、沒有密碼、沒有付款，最壞情況外流的是使用者剛貼進去的
 網址與 localStorage 裡的掃描紀錄。不是無害，但不是帳號或金流等級。
@@ -431,8 +394,8 @@ server（PORT=3131），用 Playwright 把 `/api/analyze` 換成一份固定的 
 
    ```
    default-src 'self';
-   script-src 'self' https://cloud.umami.is;
-   connect-src 'self' https://cloud.umami.is;
+   script-src 'self';
+   connect-src 'self';
    style-src 'self';
    img-src 'self' data:;
    font-src 'self';
@@ -442,17 +405,15 @@ server（PORT=3131），用 Playwright 把 `/api/analyze` 換成一份固定的 
    form-action 'self'
    ```
 
-   **`script-src` 與 `connect-src` 兩條都要有 Umami**：前者讓它載得進來，後者讓它送得出去。
-   只寫前者會讓統計靜默歸零。
+   **第三方分析工具的 `script-src` 與 `connect-src` 要分開寫**：前者讓 script 載得進來，
+   後者讓資料送得出去，只寫前者會讓統計靜默歸零（細節見 `server/index.js` 開頭註解）。
 2. **第一次部署一律用 `Content-Security-Policy-Report-Only` 標頭**，不要直接上正式的。
    Report-Only 只在 Console 報告違規、不真的擋，壞掉也不影響使用者。
-3. 觀察 1–2 天，逐項確認**五**件事（比原本多一項，理由見第五點）：
+3. 觀察 1–2 天，逐項確認**四**件事：
    - Chrome DevTools Console 零 CSP violation。
    - **第 2 項加的那段 JSON-LD 有沒有被回報違規。** 理論上 `<script type="application/ld+json">`
      是 data block、不會被 `script-src` 攔，但**這一點未實測，是這份政策裡最需要親眼確認的一項**。
      真的被擋就補 nonce。
-   - **Umami 後台看得到新的訪問資料。** 這是最容易靜默壞掉的地方，一定要看後台，
-     不要只看 Console 沒紅字就當作沒事。
    - 下載報表功能正常（`blob:` URL 的下載）。
    - **分數圓環與長條的動畫正常，且 Console 沒有 `style-src` 違規。**（2026-08-10 補上這一項）
      那兩個動畫是用 CSSOM 寫的（`main.js` 的 `fillEl.style.strokeDashoffset`、`fill.style.width`）。
@@ -470,13 +431,10 @@ Report-Only 標頭，且**沒有**下正式的強制標頭；`npm test` → `# p
 
 **2026-08-10 稍晚做的靜態稽核（可以先排除一部分風險，但不能取代 Console 觀察）**：
 
-- 線上 `index.html` 裡的外部資源只有兩個：canonical／`og:url` 指向本站自己，
-  以及 `https://cloud.umami.is/script.js`。政策的 `script-src` 與 `connect-src` 都涵蓋了它，
-  沒有第三個漏網的網域。
 - **`index.html` 裡沒有任何 `<style>` 元素，也沒有任何 `style="…"` 屬性**（已 grep 整個
   `client/public/`）。`main.js` 裡也沒有 `setAttribute('style', …)` 或 `.style.cssText = …`
   ——**這兩種是屬性寫入，會被 `style-src-attr` 管到，和逐屬性的 CSSOM 寫入不同**，
-  原本第五項觀察只想到 CSSOM，這裡把真正會違規的兩種寫法一併排除了。
+  原本第四項觀察只想到 CSSOM，這裡把真正會違規的兩種寫法一併排除了。
 - **唯一的 `<style>` 在 `main.js:930` 的 `REPORT_STYLESHEET`，它不會觸發違規**
   ——**⚠️ 這一整段的結論已被實測推翻，正確的說法見本項最後一段「查到的第二件事」。
   保留原文是為了留下「靜態推論在哪裡失準」的紀錄。** 原文如下：那段樣式
@@ -485,7 +443,7 @@ Report-Only 標頭，且**沒有**下正式的強制標頭；`npm test` → `# p
   下載完是從 `file://` 開啟、不受本站政策管轄。**這是讀程式碼推得的，未實測**，
   所以下載報表那一項觀察仍然要做。
 
-**2026-08-10 最後一次更新——五項觀察用無頭 Chrome 跑完了四項，查到兩件事。**
+**2026-08-10 最後一次更新——四項觀察用無頭 Chrome 全部跑完，查到一件事。**
 做法是用 Playwright 開 Chrome 151 連到**線上網址**，同時收兩個管道的證據：
 頁面裡註冊 `document.addEventListener('securitypolicyviolation', …)` 拿結構化的
 `violatedDirective`／`blockedURI`，以及 Console 的 `[Report Only] …` 文字訊息
@@ -494,7 +452,7 @@ Report-Only 標頭，且**沒有**下正式的強制標頭；`npm test` → `# p
 
 逐項結果：
 
-- **✅ Console 只有下面兩類違規，沒有其他紅字**，頁面本身的 JS 沒有任何錯誤。
+- **✅ Console 只有下面一類違規，沒有其他紅字**，頁面本身的 JS 沒有任何錯誤。
 - **✅ JSON-LD 沒有被 `script-src` 攔**。這是原待辦裡「最需要親眼確認」的一項：
   在**強制模式**的預演下（做法見下），`<script type="application/ld+json">` 仍然
   讀得到、`JSON.parse` 成功、`@graph` 裡的 `WebSite` 與 `WebApplication` 都在，
@@ -505,48 +463,9 @@ Report-Only 標頭，且**沒有**下正式的強制標頭；`npm test` → `# p
   三條長條的 computed 寬度是 0px / 312.891px / 312.891px，
   違規清單裡沒有 `style-src-attr`。**逐屬性的 CSSOM 寫入確實不在 `style-src` 管轄範圍，
   這一點從推論升級為實測。**
-- **✅ 下載報表功能正常**，但**觸發了一則原本預期不會發生的違規**，見下方第 2 件事。
-- **❌ Umami 後台的訪問資料——仍然未驗證。** 這需要登入 Umami 後台，我沒有帳號。
-  不過下面第 1 件事已經先一步證明了：照現在的政策切成強制，後台一定看不到新資料。
+- **✅ 下載報表功能正常**，但**觸發了一則原本預期不會發生的違規**，見下方。
 
-**查到的第一件事（真問題，切正式前必須先修）：`connect-src` 少了 `gateway.umami.is`。**
-
-- 線上實測，Umami 的 script 從 `https://cloud.umami.is/script.js` 載入（HTTP 200，
-  `script-src` 這條寫對了），但它**送統計資料的端點是
-  `POST https://gateway.umami.is/api/send`**，政策裡沒有這個網域。
-  Report-Only 之下每次載入都會記兩筆
-  `connect-src` 違規，`blockedURI` 就是 `https://gateway.umami.is/api/send`。
-- **不是只有 Console 有訊息而已——已用強制模式預演證實它真的會被擋死。**
-  做法是本機起 server，用瀏覽器端的攔截把回應標頭換成同一份政策的**強制版**
-  （`Content-Security-Policy`，內容逐字相同），不動任何專案檔案。結果是
-  `disposition` 從 `report` 變成 `enforce`，Console 出現
-  `Fetch API cannot load https://gateway.umami.is/api/send. Refused to connect…`，
-  而第三方回應清單裡**只剩 `cloud.umami.is/script.js`，`gateway.umami.is` 一筆都沒有**。
-  **統計會靜默歸零，而且使用者與你都不會看到任何徵兆。**
-- **修法**（`server/index.js:43`，一行）：
-  `"connect-src 'self' https://cloud.umami.is https://gateway.umami.is"`。
-  上面那行註解「script-src 與 connect-src 兩條都要有 Umami」的判斷是對的，
-  錯的只是網域名稱——資料端點與 script 端點在 Umami Cloud 是兩個不同的網域。
-- **這一行改法已經實測會通，不是紙上推論**：拿補好的政策再跑一次同一支強制模式預演，
-  第三方回應清單裡出現 `200 https://gateway.umami.is/api/send`，
-  違規清單裡的 `connect-src` **歸零**，只剩下面第二件事那一則 `style-src-elem`。
-  JSON-LD、CSSOM 動畫、字型、下載報表在補丁後的政策下同樣全部正常。
-- **✅ 這一行已經改完並 commit（`bbc926f`，2026-08-10）。** 同時改掉那則會誤導人的
-  註解——原文寫「兩條都要有 Umami」，讀起來像兩條抄同一個網域，正是這個 bug 的來源；
-  改成明列兩個網域各自的用途。**標頭名稱維持 `Content-Security-Policy-Report-Only`，
-  沒有切成強制。** 沒有動任何 `client/` 的檔案，所以**沒有、也不需要更新 `?v=`**。
-  **我驗證過的**：本機起 server（PORT=3141），`curl -sI` 看到的 Report-Only 標頭字串
-  是補丁後的版本（`connect-src 'self' https://cloud.umami.is https://gateway.umami.is`），
-  且回應裡**沒有**強制版標頭；`server/` 的 `npm test` → `# pass 97 / # fail 0`。
-  瀏覽器端的強制模式預演沒有重跑，沿用上一輪的實測結果。
-  **這裡原本寫「還沒 push，所以線上跑的仍是舊政策」，已經過時：這個 commit 已經 push，
-  線上跑的就是補丁後的政策。** 實測方式是 `curl -sI` 線上首頁，
-  `content-security-policy-report-only` 標頭裡含 `https://gateway.umami.is`，
-  與本機那份逐字相同；`git fetch` 後本地與遠端也是同一個 commit
-  （詳見本檔「2026-08-10 收尾對帳」）。所以 Report-Only 之下那兩筆 `connect-src`
-  違規已經不會再記，統計端點也在政策涵蓋範圍內了。
-
-**查到的第二件事（不影響功能，但要更正一則錯誤的推論）：下載報表會觸發
+**查到的一件事（不影響功能，但要更正一則錯誤的推論）：下載報表會觸發
 `style-src-elem` 違規。**
 
 - 本檔上一則靜態稽核寫「`main.js` 的 `REPORT_STYLESHEET` 不會觸發違規，因為它從頭到尾
@@ -569,19 +488,14 @@ Report-Only 標頭，且**沒有**下正式的強制標頭；`npm test` → `# p
   3. 改寫 `buildReportHtml`，改成序列化之後再用字串把 `<style>` 拼進去，避開 DOM 插入。
      這會動到下載那條路徑的程式碼，屬於另一件事，要做的話應該獨立一項。
 
-**第 4 步（切成正式強制）已於 2026-08-10 完成並上線**（`209c187`）。三個前提的結局：
+**第 4 步（切成正式強制）已於 2026-08-10 完成並上線**（`209c187`）。兩個前提的結局：
 
-1. ~~`connect-src` 要先補上 `gateway.umami.is`~~ **已完成並已上線（`bbc926f`）。**
-   本項原本寫「那個 commit 還沒 push，要切正式得先 push 補丁再切，不能兩件事一起推」
-   ——該顧慮在切換前就已消失：線上的政策字串當時已含 `https://gateway.umami.is`
-   （詳見本檔「2026-08-10 收尾對帳」），所以切換時沒有出現
-   「強制模式下少一個網域、統計斷掉」的空窗。
-2. ~~觀察窗還沒滿~~ **未滿就切了，這是你明確同意後的決定，不是漏掉。**
+1. ~~觀察窗還沒滿~~ **未滿就切了，這是你明確同意後的決定，不是漏掉。**
    `965a533` 當天上線，原訂觀察 1–2 天，實際只走過「一次載入的完整流程」的預演；
    錯誤頁、410 警示、與上次掃描比較面板這些分支沒有在強制模式下逐一走過。
    **承擔的風險是這幾條沒走過的分支若引入新的外部資源會被擋掉**；
    代價有界——回退是 `server/index.js` 把標頭名稱換回 Report-Only 一行，加一次 push。
-3. ~~要你同意才推~~ **已同意。**
+2. ~~要你同意才推~~ **已同意。**
 
 **切換的內容與驗證**（`209c187`，2026-08-10）：政策字串一字未改，只換標頭名稱；
 `server/index.js` 那則「觀察 1–2 天後才切換」的註解一併改寫成記錄預演驗證了什麼、
@@ -597,32 +511,14 @@ Report-Only 標頭，且**沒有**下正式的強制標頭；`npm test` → `# p
 - push 之後輪詢線上網址，**約 30 秒後標頭翻新**：正式的 `Content-Security-Policy`
   字串與本機逐字相同，`Report-Only` 出現次數同樣是 **0**。
 - 線上煙霧測試：`POST /api/analyze` 掃 `https://example.com` 正常回報告
-  （`httpStatus` 200、爬蟲表有資料），首頁仍載得到 `cloud.umami.is/script.js`。
-
-**待你確認：Umami 後台有沒有新的訪問資料。** 這是本項唯一沒被涵蓋的驗收條件，
-我沒有後台帳號。
-
-**這句話原本寫成「若 `gateway.umami.is` 還有哪裡不對，統計會靜默歸零」，比證據強，
-已收緊。** 正確的說法要分成兩層：
-
-- **CSP 會不會擋掉統計——已實測，不會。** 現在線上跑的「強制模式 + 補好的 `connect-src`」
-  就是本項上方那次強制模式預演跑過的同一份政策：第三方回應清單有
-  `200 https://gateway.umami.is/api/send`，`connect-src` 違規歸零。這不是未知數。
-- **Umami 自己的後台有沒有把這些請求記成訪問資料——未驗證，而且與 CSP 無關。**
-  請求送得出去、對方回 200，不等於對方的 ingestion 有記錄下來（網站 ID 設定、
-  時區、後台的資料延遲都可能造成看不到）。這一層只有登入後台才看得到。
-
-所以看後台是「補完最後一項驗收」，不是「排查一個有風險的未知數」，不必當成緊急事項。
-真的完全沒有資料，要先排除的是 Umami 端的設定而不是 CSP；若要排除 CSP，
-把標頭名稱換回 Report-Only 跑一次、看違規清單裡有沒有 `connect-src` 即可。
+  （`httpStatus` 200、爬蟲表有資料），首頁靜態資源全部正常載入。
 
 **下載報表的 `style-src-elem` 違規：依三個選項裡的第 1 案「不處理」結案。**
 功能無損（強制模式下實測檔案完整、樣式生效），代價只有按下載的人在 Console 看到一則
 訊息。這個決定寫進了 `server/index.js` 的註解，避免日後有人以為是漏掉的。
 
-**Commit 拆三個**（原本規劃兩個，補 `connect-src` 是後來多出來的一個）：
+**Commit 兩個**：
 `feat: 加上 Content-Security-Policy，先以 Report-Only 觀察`（已完成，`965a533`）
-`fix: CSP 的 connect-src 補上 gateway.umami.is`（已完成，`bbc926f`）
 `feat: CSP 從 Report-Only 切換為正式強制`（已完成，`209c187`）
 
 ---
@@ -671,10 +567,10 @@ SSRF 掃描器與流量放大器。原本排在這一節的三項——DNS rebin
   現在不做。
 
 部署後新發現、與公開身分直接相關的兩項原本列為待辦第 1 項與第 5 項：`TRUST_PROXY_HOPS`
-的設定確認（沒設對的話速率限制會變成全站共用一份額度）與 CSP（公開站 + 第三方 Umami script）。
+的設定確認（沒設對的話速率限制會變成全站共用一份額度）與 CSP（公開站 + 第三方分析 script）。
 2026-08-10 的執行結果——前者確認儀表板上的值是 `1`，雙 IP 實測未做，紀錄移到「已完成」；
-後者已全部完成：Report-Only 上線觀察、補 `connect-src`、切換為正式強制三步都做完，
-線上跑的已是強制模式（`209c187`），只剩 Umami 後台的訪問資料待確認。
+後者已全部完成：Report-Only 上線觀察、切換為正式強制兩步都做完，
+線上跑的已是強制模式（`209c187`）。
 
 ---
 
@@ -841,9 +737,9 @@ SSRF 掃描器與流量放大器。原本排在這一節的三項——DNS rebin
 - **三支字型改為自架，`index.html` 不再對 Google 發出任何請求**（`client/public/fonts/`、
   `client/scss/_fonts.scss`、`client/scss/main.scss`、`client/public/index.html`）
   移除兩條 `preconnect` 與那條 `fonts.googleapis.com` 的 stylesheet，共三個 `<link>`。
-  **這則寫的當下 `index.html` 完全沒有外部請求，但同日稍晚加入了 Umami 分析 script
-  （`cloud.umami.is`），所以「零外部請求」現在已不成立**。字型那一半不受影響：
-  六個 woff2 全部是本地檔案，離線照樣算繪；Umami 的 script 帶 `defer`，
+  **這則寫的當下 `index.html` 完全沒有外部請求，但後續加入了 Google Analytics 的
+  `gtag.js`，所以「零外部請求」現在已不成立**。字型那一半不受影響：
+  六個 woff2 全部是本地檔案，離線照樣算繪；`gtag.js` 帶 `async`，
   抓不到就靜默失敗，畫面不會有任何變化。
   **只移掉 stylesheet 那一條不夠**——`preconnect` 本身就會對 Google 開 TCP／TLS 連線，
   隱私問題原封不動。新增 `client/scss/_fonts.scss` 放六段 `@font-face`，
@@ -885,7 +781,7 @@ SSRF 掃描器與流量放大器。原本排在這一節的三項——DNS rebin
   `/`、`/css/main.css`、`/js/main.js` 仍為 200。
   另以 grep 確認整個 repo 沒有任何 `googleapis`／`gstatic`／`fonts.google` 字串（這一條至今成立），
   當下 `index.html` 與編譯後的 `main.css` 裡唯一剩下的 `https://` 是輸入框的 placeholder 文字
-  （同日稍晚加入的 Umami script 是後來多出來的第二處，見本則第一點）。
+  （後續加入的 Google Analytics `gtag.js` 是後來多出來的第二處，見本則第一點）。
 - **`core.autocrlf = true` 會不會弄壞二進位檔**：這台機器開著 autocrlf，已用
   `git diff --cached --numstat` 確認六個 woff2 都被判定為二進位（顯示為 `-`），
   換行轉換不會套用；`git cat-file -s` 的 blob 大小與磁碟位元組數一一相符。
